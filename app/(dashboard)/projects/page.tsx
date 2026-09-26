@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 
 async function createProject(formData: FormData) {
   "use server";
@@ -94,7 +95,11 @@ export default async function ProjectsPage() {
             {projects?.map((p) => (
               <tr key={p.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-2">{p.project_code}</td>
-                <td className="px-4 py-2">{p.project_name}</td>
+                <td className="px-4 py-2">
+                  <Link href={`/projects/${p.id}`} className="text-active hover:underline">
+                    {p.project_name}
+                  </Link>
+                </td>
                 <td className="px-4 py-2">{p.department}</td>
                 <td className="px-4 py-2">
                   Rs {Number(p.original_contract_amount).toLocaleString("en-PK")}
