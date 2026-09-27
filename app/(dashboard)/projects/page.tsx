@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -14,7 +16,7 @@ async function createProject(formData: FormData) {
     .eq("id", userData.user?.id)
     .single();
 
-  await supabase.from("projects").insert({
+  const { error } = await supabase.from("projects").insert({
     org_id: userRow?.org_id,
     project_code: formData.get("project_code"),
     project_name: formData.get("project_name"),
@@ -23,6 +25,10 @@ async function createProject(formData: FormData) {
     original_contract_amount: Number(formData.get("original_contract_amount")),
     status: "active",
   });
+
+  if (error) {
+    throw new Error(`Could not add project: ${error.message}`);
+  }
 
   revalidatePath("/projects");
 }

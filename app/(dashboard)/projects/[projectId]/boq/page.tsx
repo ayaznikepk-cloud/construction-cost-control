@@ -1,14 +1,17 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 async function addSection(formData: FormData) {
   "use server";
   const supabase = createClient();
-  await supabase.from("boq_sections").insert({
+  const { error } = await supabase.from("boq_sections").insert({
     project_id: formData.get("project_id"),
     name: formData.get("name"),
     sort_order: Number(formData.get("sort_order") ?? 0),
   });
+  if (error) throw new Error(`Could not add section: ${error.message}`);
   revalidatePath(`/projects/${formData.get("project_id")}/boq`);
 }
 
@@ -17,7 +20,7 @@ async function addItem(formData: FormData) {
   const supabase = createClient();
   const projectId = formData.get("project_id") as string;
 
-  await supabase.from("boq_items").insert({
+  const { error } = await supabase.from("boq_items").insert({
     project_id: projectId,
     section_id: formData.get("section_id") || null,
     boq_number: formData.get("boq_number"),
@@ -27,6 +30,8 @@ async function addItem(formData: FormData) {
     mrs_rate: formData.get("mrs_rate") ? Number(formData.get("mrs_rate")) : null,
     contract_rate: Number(formData.get("contract_rate")),
   });
+
+  if (error) throw new Error(`Could not add BOQ item: ${error.message}`);
 
   revalidatePath(`/projects/${projectId}/boq`);
 }

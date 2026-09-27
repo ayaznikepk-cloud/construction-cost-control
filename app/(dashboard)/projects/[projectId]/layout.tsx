@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import ProjectHeader from "@/components/shared/ProjectHeader";
 import Link from "next/link";
