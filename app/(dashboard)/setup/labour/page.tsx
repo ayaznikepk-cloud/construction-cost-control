@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import AddWorkerForm from "@/components/labour/AddWorkerForm";
 
 const trades = [
   "Mason", "Helper", "Carpenter", "Steel Fixer", "Electrician", "Plumber",
@@ -46,54 +47,7 @@ export default async function LabourSetupPage() {
     <div>
       <h1 className="mb-6 text-lg font-semibold">Labour</h1>
 
-      <form action={addWorker} className="mb-6 rounded-lg border border-border bg-white p-4">
-        <div className="mb-3 text-sm font-medium">Add worker</div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <input
-            name="worker_code"
-            placeholder="Worker ID"
-            required
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <input
-            name="name"
-            placeholder="Full name"
-            required
-            className="rounded-md border border-border px-3 py-2 text-sm md:col-span-2"
-          />
-          <input
-            name="mobile"
-            placeholder="Mobile"
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <select name="trade" required className="rounded-md border border-border px-3 py-2 text-sm">
-            <option value="">Trade</option>
-            {trades.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          <input
-            name="daily_wage_rate"
-            type="number"
-            step="0.01"
-            placeholder="Daily wage (Rs)"
-            required
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <input
-            name="overtime_rate"
-            type="number"
-            step="0.01"
-            placeholder="OT rate / hour (Rs)"
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <button className="col-span-2 rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90 md:col-span-3">
-            Add worker
-          </button>
-        </div>
-      </form>
+      <AddWorkerForm action={addWorker} />
 
       <div className="rounded-lg border border-border bg-white">
         <table className="w-full text-sm">

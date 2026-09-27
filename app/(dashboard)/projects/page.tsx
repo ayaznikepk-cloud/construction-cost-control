@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
+import AddProjectForm from "@/components/shared/AddProjectForm";
 
 async function createProject(formData: FormData) {
   "use server";
@@ -44,47 +45,7 @@ export default async function ProjectsPage() {
     <div>
       <h1 className="mb-6 text-lg font-semibold">Projects</h1>
 
-      <div className="mb-6 rounded-lg border border-border bg-white p-4">
-        <div className="mb-3 text-sm font-medium">Add project</div>
-        <form action={createProject} className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <input
-            name="project_code"
-            placeholder="Project code"
-            required
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <input
-            name="project_name"
-            placeholder="Project name"
-            required
-            className="rounded-md border border-border px-3 py-2 text-sm md:col-span-2"
-          />
-          <input
-            name="department"
-            placeholder="Department"
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <input
-            name="location"
-            placeholder="Location"
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <input
-            name="original_contract_amount"
-            type="number"
-            step="0.01"
-            placeholder="Contract amount (Rs)"
-            required
-            className="rounded-md border border-border px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            className="col-span-2 rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90 md:col-span-3"
-          >
-            Add project
-          </button>
-        </form>
-      </div>
+      <AddProjectForm action={createProject} />
 
       <div className="rounded-lg border border-border bg-white">
         <table className="w-full text-sm">
