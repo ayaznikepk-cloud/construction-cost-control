@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import AddSectionForm from "@/components/boq/AddSectionForm";
+import AddItemForm from "@/components/boq/AddItemForm";
 
 async function addSection(formData: FormData) {
   "use server";
@@ -94,85 +96,13 @@ export default async function BoqPage({ params }: { params: { projectId: string 
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-2">
-        <form
-          action={addSection}
-          className="rounded-lg border border-border bg-white p-4"
-        >
-          <input type="hidden" name="project_id" value={params.projectId} />
-          <div className="mb-3 text-sm font-medium">Add BOQ section / category</div>
-          <div className="flex gap-2">
-            <input
-              name="name"
-              placeholder="e.g. Foundation Works"
-              required
-              className="flex-1 rounded-md border border-border px-3 py-2 text-sm"
-            />
-            <button className="rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-              Add
-            </button>
-          </div>
-        </form>
-
-        <form action={addItem} className="rounded-lg border border-border bg-white p-4">
-          <input type="hidden" name="project_id" value={params.projectId} />
-          <div className="mb-3 text-sm font-medium">Add BOQ item</div>
-          <div className="grid grid-cols-2 gap-2">
-            <select name="section_id" className="rounded-md border border-border px-3 py-2 text-sm">
-              <option value="">No section</option>
-              {sections?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <input
-              name="boq_number"
-              placeholder="BOQ #"
-              required
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-            <input
-              name="description"
-              placeholder="Description"
-              required
-              className="col-span-2 rounded-md border border-border px-3 py-2 text-sm"
-            />
-            <input
-              name="original_quantity"
-              type="number"
-              step="0.001"
-              placeholder="Quantity"
-              required
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-            <select name="unit_id" required className="rounded-md border border-border px-3 py-2 text-sm">
-              <option value="">Unit</option>
-              {units?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.code}
-                </option>
-              ))}
-            </select>
-            <input
-              name="mrs_rate"
-              type="number"
-              step="0.01"
-              placeholder="MRS Rate"
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-            <input
-              name="contract_rate"
-              type="number"
-              step="0.01"
-              placeholder="Contract Rate"
-              required
-              className="rounded-md border border-border px-3 py-2 text-sm"
-            />
-          </div>
-          <button className="mt-2 w-full rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-            Add item
-          </button>
-        </form>
+        <AddSectionForm projectId={params.projectId} action={addSection} />
+        <AddItemForm
+          projectId={params.projectId}
+          sections={sections ?? []}
+          units={units ?? []}
+          action={addItem}
+        />
       </div>
 
       <div className="rounded-lg border border-border bg-white">
