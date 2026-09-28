@@ -54,7 +54,7 @@ async function addItem(formData: FormData) {
   if (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0)) {
     throw new Error("Quantity and rates must be zero or greater.");
   }
-  if (sectionId) {
+  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId).maybeSingle();\n  if (!unitRow) throw new Error("Selected unit was not found.");\n  const rateBasis = unitRow.code.startsWith("%") ? 100 : 1;\n\n  if (sectionId) {
     const { data } = await supabase.from("boq_sections").select("id").eq("id", sectionId).eq("project_id", projectId).maybeSingle();
     if (!data) throw new Error("Selected BOQ section does not belong to this project.");
   }
@@ -66,7 +66,7 @@ async function addItem(formData: FormData) {
   const { error } = await supabase.from("boq_items").insert({
     project_id: projectId, section_id: sectionId, parent_boq_item_id: parentId,
     boq_number: boqNumber, description, unit_id: unitId, original_quantity: quantity,
-    mrs_rate: mrsRate, contract_rate: contractRate, sort_order: sortOrder,
+    mrs_rate: mrsRate, contract_rate: contractRate, rate_basis: rateBasis, sort_order: sortOrder,
     created_by: user.id, updated_by: user.id,
   });
   if (error) throw new Error(`Could not add BOQ item: ${error.message}`);
@@ -89,7 +89,7 @@ async function lockOriginalBoq(formData: FormData) {
 
 type BoqItem = {
   id: string; section_id: string | null; parent_boq_item_id: string | null; boq_number: string;
-  description: string; original_quantity: number; mrs_rate: number | null; contract_rate: number;
+  description: string; original_quantity: number; mrs_rate: number | null; contract_rate: number;\n  rate_basis: number; original_mrs_amount: number | null; original_contract_amount: number | null;
   sort_order: number; is_locked: boolean; units: { code: string } | { code: string }[] | null;
 };
 
@@ -114,8 +114,8 @@ export default async function BoqPage({ params }: { params: { projectId: string 
   const approvedVariationByItem = new Map<string, number>();
   for (const v of variations ?? []) if (v.status === "approved") approvedVariationByItem.set(v.boq_item_id, (approvedVariationByItem.get(v.boq_item_id) ?? 0) + Number(v.approved_quantity ?? 0));
 
-  const originalBoqValue = items.reduce((sum, i) => sum + Number(i.original_quantity) * Number(i.contract_rate), 0);
-  const approvedVariationValue = items.reduce((sum, i) => sum + (approvedVariationByItem.get(i.id) ?? 0) * Number(i.contract_rate), 0);
+  const originalBoqValue = items.reduce((sum, i) => sum + Number(i.original_contract_amount ?? (Number(i.original_quantity) * Number(i.contract_rate) / Number(i.rate_basis || 1))), 0);
+  const approvedVariationValue = items.reduce((sum, i) => sum + (approvedVariationByItem.get(i.id) ?? 0) * Number(i.contract_rate) / Number(i.rate_basis || 1), 0);
   const approvedExtraValue = (extraItems ?? []).filter((e) => e.status === "approved").reduce((sum, e) => sum + Number(e.quantity) * Number(e.approved_rate ?? 0), 0);
   const revisedBoqValue = originalBoqValue + approvedVariationValue + approvedExtraValue;
   const allLocked = items.length > 0 && items.every((i) => i.is_locked);
@@ -171,7 +171,7 @@ function SectionRows({name,items,executed,variations}:{name:string;items:BoqItem
 function BoqRow({item,executed,variation}:{item:BoqItem;executed:number;variation:number}) {
   const unit = Array.isArray(item.units) ? item.units[0]?.code : item.units?.code;
   const revised = Number(item.original_quantity)+variation;
-  const amount = Number(item.original_quantity)*Number(item.contract_rate);
+  const amount = Number(item.original_contract_amount ?? (Number(item.original_quantity) * Number(item.contract_rate) / Number(item.rate_basis || 1)));
   return <tr className="border-b border-border align-top last:border-0 hover:bg-gray-50">
     <td className="whitespace-nowrap px-4 py-3 font-medium">{item.boq_number}{item.is_locked && <span className="ml-2 text-[10px] text-gray-400">LOCKED</span>}</td>
     <td className="min-w-[360px] max-w-xl whitespace-normal px-4 py-3 leading-5 text-gray-700">{item.description}</td>
