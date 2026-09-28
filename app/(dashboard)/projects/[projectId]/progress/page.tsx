@@ -19,14 +19,14 @@ async function addProgress(fd:FormData){
 }
 export default async function ProgressPage({params}:{params:{projectId:string}}){
  const s=createClient(); const [{data:raw},{data:vars},{data:entries,error}]=await Promise.all([
- s.from("boq_items").select("id,boq_number,description,original_quantity,contract_rate,rate_basis,units(code)").eq("project_id",params.projectId).order("sort_order"),
+ s.from("boq_items").select("id,boq_number,description,original_quantity,original_contract_amount,contract_rate,rate_basis,units(code)").eq("project_id",params.projectId).order("sort_order"),
  s.from("boq_variations").select("boq_item_id,approved_quantity,status,boq_items!inner(project_id)").eq("boq_items.project_id",params.projectId),
  s.from("progress_entries").select("id,boq_item_id,entry_date,quantity_today,created_at,boq_items!inner(project_id,boq_number,description,contract_rate,rate_basis,units(code))").eq("boq_items.project_id",params.projectId).order("entry_date",{ascending:false}).order("created_at",{ascending:false})
  ]);if(error)throw new Error(error.message);
  const av=new Map<string,number>();for(const v of vars??[])if(v.status==="approved")av.set(v.boq_item_id,(av.get(v.boq_item_id)??0)+Number(v.approved_quantity??0));
  const ex=new Map<string,number>();for(const e of entries??[])ex.set(e.boq_item_id,(ex.get(e.boq_item_id)??0)+Number(e.quantity_today??0));
  const items=(raw??[]).map((i:any)=>{const unit=Array.isArray(i.units)?i.units[0]?.code:i.units?.code??"";return {...i,unit,revised_quantity:Number(i.original_quantity)+(av.get(i.id)??0),executed_quantity:ex.get(i.id)??0}});
- const revisedValue=items.reduce((a:any,i:any)=>a+i.revised_quantity*Number(i.contract_rate)/Number(i.rate_basis||1),0),executedValue=items.reduce((a:any,i:any)=>a+i.executed_quantity*Number(i.contract_rate)/Number(i.rate_basis||1),0),complete=items.filter((i:any)=>i.revised_quantity>0&&i.executed_quantity>=i.revised_quantity).length;
+ const originalValue=items.reduce((a:any,i:any)=>a+Number(i.original_contract_amount??0),0),variationValue=items.reduce((a:any,i:any)=>a+(av.get(i.id)??0)*Number(i.contract_rate)/Number(i.rate_basis||1),0),revisedValue=originalValue+variationValue,executedValue=items.reduce((a:any,i:any)=>a+i.executed_quantity*Number(i.contract_rate)/Number(i.rate_basis||1),0),complete=items.filter((i:any)=>i.revised_quantity>0&&i.executed_quantity>=i.revised_quantity).length;
  return <div className="space-y-6"><div><h2 className="text-lg font-semibold">Work Progress</h2><p className="mt-1 text-sm text-gray-500">Daily executed quantities against the revised BOQ. Certification and billing remain separate.</p></div>
  <div className="grid gap-4 md:grid-cols-4"><Metric label="Revised BOQ Value" value={pkr(revisedValue)}/><Metric label="Executed Value" value={pkr(executedValue)}/><Metric label="BOQ Items Complete" value={complete+" / "+items.length}/><Metric label="Value Progress" value={(revisedValue?executedValue/revisedValue*100:0).toFixed(2)+"%"}/></div>
  <ProgressEntryForm projectId={params.projectId} items={items.filter((i:any)=>i.revised_quantity>i.executed_quantity).map((i:any)=>({id:i.id,boq_number:i.boq_number,description:i.description,unit:i.unit,revised_quantity:i.revised_quantity,executed_quantity:i.executed_quantity}))} action={addProgress}/>
