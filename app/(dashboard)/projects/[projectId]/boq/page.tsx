@@ -54,7 +54,11 @@ async function addItem(formData: FormData) {
   if (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0)) {
     throw new Error("Quantity and rates must be zero or greater.");
   }
-  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId).maybeSingle();\n  if (!unitRow) throw new Error("Selected unit was not found.");\n  const rateBasis = unitRow.code.startsWith("%") ? 100 : 1;\n\n  if (sectionId) {
+  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId).maybeSingle();
+  if (!unitRow) throw new Error("Selected unit was not found.");
+  const rateBasis = unitRow.code.startsWith("%") ? 100 : 1;
+
+  if (sectionId) {
     const { data } = await supabase.from("boq_sections").select("id").eq("id", sectionId).eq("project_id", projectId).maybeSingle();
     if (!data) throw new Error("Selected BOQ section does not belong to this project.");
   }
@@ -89,7 +93,8 @@ async function lockOriginalBoq(formData: FormData) {
 
 type BoqItem = {
   id: string; section_id: string | null; parent_boq_item_id: string | null; boq_number: string;
-  description: string; original_quantity: number; mrs_rate: number | null; contract_rate: number;\n  rate_basis: number; original_mrs_amount: number | null; original_contract_amount: number | null;
+  description: string; original_quantity: number; mrs_rate: number | null; contract_rate: number;
+  rate_basis: number; original_mrs_amount: number | null; original_contract_amount: number | null;
   sort_order: number; is_locked: boolean; units: { code: string } | { code: string }[] | null;
 };
 
