@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import AddSectionForm from "@/components/boq/AddSectionForm";
 import AddItemForm from "@/components/boq/AddItemForm";
-import { VariationForm, ExtraItemForm } from "@/components/boq/VariationExtraForms";
+import { VariationForm, ExtraItemForm, ApprovalForm } from "@/components/boq/VariationExtraForms";
 import { pkr } from "@/lib/format";
 
 function textValue(formData: FormData, name: string) {
@@ -83,33 +83,54 @@ async function addVariation(formData: FormData) {
   "use server";
   const supabase = createClient(); const user = await currentUser(supabase);
   const projectId=textValue(formData,"project_id"), boqItemId=textValue(formData,"boq_item_id");
-  const proposed=numberValue(formData,"proposed_quantity"), approved=numberValue(formData,"approved_quantity");
-  const status=textValue(formData,"status") ?? "draft", approvalReference=textValue(formData,"approval_reference");
-  const approvalDate=textValue(formData,"approval_date"), remarks=textValue(formData,"remarks");
+  const proposed=numberValue(formData,"proposed_quantity");
+  const status=textValue(formData,"status") ?? "draft", remarks=textValue(formData,"remarks");
   if(!projectId||!boqItemId||proposed===null) throw new Error("BOQ item and proposed quantity change are required.");
-  if(!["draft","submitted","approved","rejected","cancelled"].includes(status)) throw new Error("Invalid variation status.");
-  if(status==="approved" && approved===null) throw new Error("Approved quantity is required when approving a variation.");
+  if(!["draft","submitted"].includes(status)) throw new Error("New variations can only be saved as draft or submitted.");
   const {data:item}=await supabase.from("boq_items").select("id,is_locked").eq("id",boqItemId).eq("project_id",projectId).maybeSingle();
   if(!item) throw new Error("Selected BOQ item does not belong to this project.");
   if(!item.is_locked) throw new Error("Lock the original BOQ before recording variations.");
-  const {error}=await supabase.from("boq_variations").insert({boq_item_id:boqItemId,proposed_quantity:proposed,approved_quantity:approved,status,approval_reference:approvalReference,approval_date:approvalDate,remarks,created_by:user.id});
+  const {error}=await supabase.from("boq_variations").insert({boq_item_id:boqItemId,proposed_quantity:proposed,status,remarks,created_by:user.id});
   if(error) throw new Error(`Could not add variation: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
 }
 async function addExtraItem(formData: FormData) {
   "use server";
   const supabase=createClient(); const user=await currentUser(supabase);
   const projectId=textValue(formData,"project_id"),description=textValue(formData,"description"),unitId=textValue(formData,"unit_id");
-  const quantity=numberValue(formData,"quantity"),proposedRate=numberValue(formData,"proposed_rate"),approvedRate=numberValue(formData,"approved_rate");
-  const status=textValue(formData,"status")??"draft",approvalReference=textValue(formData,"approval_reference"),approvalDate=textValue(formData,"approval_date");
+  const quantity=numberValue(formData,"quantity"),proposedRate=numberValue(formData,"proposed_rate");
+  const status=textValue(formData,"status")??"draft";
   if(!projectId||!description||!unitId||quantity===null||quantity<0) throw new Error("Description, unit and a valid quantity are required.");
-  if((proposedRate!==null&&proposedRate<0)||(approvedRate!==null&&approvedRate<0)) throw new Error("Rates must be zero or greater.");
-  if(!["draft","submitted","approved","rejected","cancelled"].includes(status)) throw new Error("Invalid extra-item status.");
-  if(status==="approved"&&approvedRate===null) throw new Error("Approved rate is required when approving an extra item.");
+  if(proposedRate!==null&&proposedRate<0) throw new Error("Rates must be zero or greater.");
+  if(!["draft","submitted"].includes(status)) throw new Error("New extra items can only be saved as draft or submitted.");
   const {data:locked}=await supabase.from("boq_items").select("id").eq("project_id",projectId).eq("is_locked",true).limit(1);
   if(!locked?.length) throw new Error("Lock the original BOQ before recording extra items.");
   const {data:unit}=await supabase.from("units").select("id").eq("id",unitId).maybeSingle(); if(!unit) throw new Error("Selected unit was not found.");
-  const {error}=await supabase.from("boq_extra_items").insert({project_id:projectId,description,unit_id:unitId,quantity,proposed_rate:proposedRate,approved_rate:approvedRate,status,approval_reference:approvalReference,approval_date:approvalDate,created_by:user.id});
+  const {error}=await supabase.from("boq_extra_items").insert({project_id:projectId,description,unit_id:unitId,quantity,proposed_rate:proposedRate,status,created_by:user.id});
   if(error) throw new Error(`Could not add extra item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
+}
+
+
+async function decideChange(formData: FormData) {
+  "use server";
+  const supabase=createClient(); await currentUser(supabase);
+  const projectId=textValue(formData,"project_id"),recordId=textValue(formData,"record_id"),kind=textValue(formData,"kind"),decision=textValue(formData,"decision");
+  const reference=textValue(formData,"approval_reference"),date=textValue(formData,"approval_date"),remarks=textValue(formData,"approval_remarks");
+  if(!projectId||!recordId||!reference||!date||!["variation","extra"].includes(kind??"")||!["approved","rejected"].includes(decision??"")) throw new Error("Decision, approval reference and approval date are required.");
+  if(kind==="variation"){
+    const approved=numberValue(formData,"approved_quantity");
+    const {data:row}=await supabase.from("boq_variations").select("id,status,boq_items!inner(project_id)").eq("id",recordId).eq("boq_items.project_id",projectId).maybeSingle();
+    if(!row||row.status!=="submitted") throw new Error("Only submitted variations can be approved or rejected.");
+    const {error}=await supabase.from("boq_variations").update({status:decision,approved_quantity:decision==="approved"?approved:null,approval_reference:reference,approval_date:date,remarks:remarks??undefined}).eq("id",recordId).eq("status","submitted");
+    if(error) throw new Error(`Could not update variation: ${error.message}`);
+  } else {
+    const approvedRate=numberValue(formData,"approved_rate");
+    if(decision==="approved"&&(approvedRate===null||approvedRate<0)) throw new Error("A valid approved rate is required.");
+    const {data:row}=await supabase.from("boq_extra_items").select("id,status").eq("id",recordId).eq("project_id",projectId).maybeSingle();
+    if(!row||row.status!=="submitted") throw new Error("Only submitted extra items can be approved or rejected.");
+    const {error}=await supabase.from("boq_extra_items").update({status:decision,approved_rate:decision==="approved"?approvedRate:null,approval_reference:reference,approval_date:date}).eq("id",recordId).eq("status","submitted");
+    if(error) throw new Error(`Could not update extra item: ${error.message}`);
+  }
+  revalidatePath(`/projects/${projectId}/boq`);
 }
 
 async function lockOriginalBoq(formData: FormData) {
@@ -187,8 +208,8 @@ export default async function BoqPage({ params }: { params: { projectId: string 
       {allLocked && <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">The original BOQ is locked. Quantity changes are recorded as variations, and non-BOQ work as extra items.</div>}
       {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
       {allLocked && <div className="grid gap-4 xl:grid-cols-2">
-        <ChangeRegister title="Variation register" empty="No variations recorded." rows={(variations??[]).map((v:any)=>({name:`${v.boq_items?.boq_number ?? "BOQ"} — ${v.boq_items?.description ?? ""}`,detail:`Proposed Δ ${Number(v.proposed_quantity).toLocaleString()} · Approved Δ ${v.approved_quantity==null?"—":Number(v.approved_quantity).toLocaleString()}`,status:v.status,reference:v.approval_reference,date:v.approval_date}))}/>
-        <ChangeRegister title="Extra item register" empty="No extra items recorded." rows={(extraItems??[]).map((e:any)=>({name:e.description,detail:`${Number(e.quantity).toLocaleString()} ${Array.isArray(e.units)?e.units[0]?.code:e.units?.code ?? ""} · Proposed ${e.proposed_rate==null?"—":pkr(Number(e.proposed_rate))} · Approved ${e.approved_rate==null?"—":pkr(Number(e.approved_rate))}`,status:e.status,reference:e.approval_reference,date:e.approval_date}))}/>
+        <ChangeRegister title="Variation register" empty="No variations recorded." projectId={params.projectId} action={decideChange} rows={(variations??[]).map((v:any)=>({id:v.id,kind:"variation" as const,name:`${v.boq_items?.boq_number ?? "BOQ"} — ${v.boq_items?.description ?? ""}`,detail:`Proposed Δ ${Number(v.proposed_quantity).toLocaleString()} · Approved Δ ${v.approved_quantity==null?"—":Number(v.approved_quantity).toLocaleString()}`,status:v.status,reference:v.approval_reference,date:v.approval_date,proposedQuantity:Number(v.proposed_quantity)}))}/>
+        <ChangeRegister title="Extra item register" empty="No extra items recorded." projectId={params.projectId} action={decideChange} rows={(extraItems??[]).map((e:any)=>({id:e.id,kind:"extra" as const,name:e.description,detail:`${Number(e.quantity).toLocaleString()} ${Array.isArray(e.units)?e.units[0]?.code:e.units?.code ?? ""} · Proposed ${e.proposed_rate==null?"—":pkr(Number(e.proposed_rate))} · Approved ${e.approved_rate==null?"—":pkr(Number(e.approved_rate))}`,status:e.status,reference:e.approval_reference,date:e.approval_date,proposedRate:e.proposed_rate==null?null:Number(e.proposed_rate)}))}/>
       </div>}
 
       <div className="overflow-hidden rounded-xl border border-border bg-white">
@@ -232,6 +253,6 @@ function BoqRow({item,executed,variation}:{item:BoqItem;executed:number;variatio
   </tr>;
 }
 
-function ChangeRegister({title,empty,rows}:{title:string;empty:string;rows:{name:string;detail:string;status:string;reference?:string|null;date?:string|null}[]}) {
- return <div className="overflow-hidden rounded-xl border border-border bg-white"><div className="border-b border-border px-4 py-3 font-medium">{title}</div>{!rows.length?<div className="px-4 py-8 text-sm text-gray-500">{empty}</div>:<div className="divide-y divide-border">{rows.map((r,i)=><div key={i} className="px-4 py-3"><div className="flex items-start justify-between gap-3"><div className="font-medium text-gray-900">{r.name}</div><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-medium uppercase text-gray-600">{r.status}</span></div><div className="mt-1 text-sm text-gray-600">{r.detail}</div>{(r.reference||r.date)&&<div className="mt-1 text-xs text-gray-500">{r.reference||"No reference"}{r.date?` · ${r.date}`:""}</div>}</div>)}</div>}</div>
+function ChangeRegister({title,empty,rows,projectId,action}:{title:string;empty:string;projectId:string;action:(formData:FormData)=>Promise<void>;rows:{id:string;kind:"variation"|"extra";name:string;detail:string;status:string;reference?:string|null;date?:string|null;proposedQuantity?:number|null;proposedRate?:number|null}[]}) {
+ return <div className="overflow-hidden rounded-xl border border-border bg-white"><div className="border-b border-border px-4 py-3 font-medium">{title}</div>{!rows.length?<div className="px-4 py-8 text-sm text-gray-500">{empty}</div>:<div className="divide-y divide-border">{rows.map(r=><div key={r.id} className="px-4 py-3"><div className="flex items-start justify-between gap-3"><div className="font-medium text-gray-900">{r.name}</div><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-medium uppercase text-gray-600">{r.status}</span></div><div className="mt-1 text-sm text-gray-600">{r.detail}</div>{(r.reference||r.date)&&<div className="mt-1 text-xs text-gray-500">{r.reference||"No reference"}{r.date?` · ${r.date}`:""}</div>}{r.status==="submitted"&&<ApprovalForm kind={r.kind} id={r.id} projectId={projectId} proposedQuantity={r.proposedQuantity} proposedRate={r.proposedRate} action={action}/>}</div>)}</div>}</div>
 }
