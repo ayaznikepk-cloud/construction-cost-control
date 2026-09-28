@@ -54,7 +54,7 @@ async function addItem(formData: FormData) {
   if (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0)) {
     throw new Error("Quantity and rates must be zero or greater.");
   }
-  if (sectionId) {
+  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId).maybeSingle();\n  if (!unitRow) throw new Error("Selected unit was not found.");\n  const rateBasis = unitRow.code.startsWith("%") ? 100 : 1;\n\n  if (sectionId) {
     const { data } = await supabase.from("boq_sections").select("id").eq("id", sectionId).eq("project_id", projectId).maybeSingle();
     if (!data) throw new Error("Selected BOQ section does not belong to this project.");
   }
@@ -66,7 +66,7 @@ async function addItem(formData: FormData) {
   const { error } = await supabase.from("boq_items").insert({
     project_id: projectId, section_id: sectionId, parent_boq_item_id: parentId,
     boq_number: boqNumber, description, unit_id: unitId, original_quantity: quantity,
-    mrs_rate: mrsRate, contract_rate: contractRate, sort_order: sortOrder,
+    mrs_rate: mrsRate, contract_rate: contractRate, rate_basis: rateBasis, sort_order: sortOrder,
     created_by: user.id, updated_by: user.id,
   });
   if (error) throw new Error(`Could not add BOQ item: ${error.message}`);
