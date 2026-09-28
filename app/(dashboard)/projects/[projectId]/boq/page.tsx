@@ -104,7 +104,7 @@ export default async function BoqPage({ params }: { params: { projectId: string 
     { data: project }, { data: sections, error: sectionError }, { data: rawItems, error: itemError },
     { data: units }, { data: costSummary }, { data: variations }, { data: extraItems }
   ] = await Promise.all([
-    supabase.from("projects").select("original_contract_amount").eq("id", params.projectId).single(),
+    supabase.from("projects").select("original_contract_amount, approved_dnit_mrs_amount, bid_percentage").eq("id", params.projectId).single(),
     supabase.from("boq_sections").select("*").eq("project_id", params.projectId).order("sort_order"),
     supabase.from("boq_items").select("*, units(code)").eq("project_id", params.projectId).order("sort_order"),
     supabase.from("units").select("*").order("code"),
@@ -119,6 +119,7 @@ export default async function BoqPage({ params }: { params: { projectId: string 
   const approvedVariationByItem = new Map<string, number>();
   for (const v of variations ?? []) if (v.status === "approved") approvedVariationByItem.set(v.boq_item_id, (approvedVariationByItem.get(v.boq_item_id) ?? 0) + Number(v.approved_quantity ?? 0));
 
+  const originalMrsValue = items.reduce((sum, i) => sum + Number(i.original_mrs_amount ?? (Number(i.original_quantity) * Number(i.mrs_rate ?? 0) / Number(i.rate_basis || 1))), 0);
   const originalBoqValue = items.reduce((sum, i) => sum + Number(i.original_contract_amount ?? (Number(i.original_quantity) * Number(i.contract_rate) / Number(i.rate_basis || 1))), 0);
   const approvedVariationValue = items.reduce((sum, i) => sum + (approvedVariationByItem.get(i.id) ?? 0) * Number(i.contract_rate) / Number(i.rate_basis || 1), 0);
   const approvedExtraValue = (extraItems ?? []).filter((e) => e.status === "approved").reduce((sum, e) => sum + Number(e.quantity) * Number(e.approved_rate ?? 0), 0);
@@ -169,7 +170,7 @@ export default async function BoqPage({ params }: { params: { projectId: string 
   );
 }
 
-function Metric({label,value}:{label:string;value:number}) { return <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-lg font-semibold">{pkr(value)}</div></div>; }
+function Metric({label,value,text}:{label:string;value?:number;text?:string}) { return <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-lg font-semibold">{text ?? pkr(value ?? 0)}</div></div>; }
 function SectionRows({name,items,executed,variations}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>}) {
   return <><tr className="bg-gray-50"><td colSpan={10} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0}/>)}</>;
 }
