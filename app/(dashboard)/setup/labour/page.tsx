@@ -38,10 +38,10 @@ async function addWorker(formData: FormData) {
 
 export default async function LabourSetupPage() {
   const supabase = createClient();
-  const { data: workers } = await supabase
+  const { data: workers, error: workersError } = await supabase
     .from("workers")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("name");
 
   return (
     <div>
@@ -74,7 +74,14 @@ export default async function LabourSetupPage() {
                 <td className="px-4 py-2 capitalize">{w.status}</td>
               </tr>
             ))}
-            {(workers ?? []).length === 0 && (
+            {workersError && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-danger">
+                  Could not load workers: {workersError.message}
+                </td>
+              </tr>
+            )}
+            {!workersError && (workers ?? []).length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
                   No workers yet — add your first one above.
