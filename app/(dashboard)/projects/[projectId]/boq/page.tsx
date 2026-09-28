@@ -137,9 +137,12 @@ export default async function BoqPage({ params }: { params: { projectId: string 
         {allLocked && <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">Original BOQ locked</span>}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Metric label="Approved DNIT / MRS" value={Number(project?.approved_dnit_mrs_amount ?? 0)} />
+        <Metric label="MRS BOQ Total" value={originalMrsValue} />
         <Metric label="Award / Agreement" value={Number(project?.original_contract_amount ?? 0)} />
-        <Metric label="Original BOQ Value" value={originalBoqValue} />
+        <Metric label="Below DNIT" text={project?.bid_percentage == null ? "—" : `${Math.abs(Number(project.bid_percentage)).toFixed(2)}% below`} />
+        <Metric label="Original Contractor BOQ" value={originalBoqValue} />
         <Metric label="Approved Variations" value={approvedVariationValue} />
         <Metric label="Approved Extra Items" value={approvedExtraValue} />
         <Metric label="Revised BOQ Value" value={revisedBoqValue} />
