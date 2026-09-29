@@ -36,9 +36,9 @@ export default function PurchaseEntryForm({projects,suppliers,materials,action}:
   <input type="hidden" name="items_json" value={JSON.stringify(lines)}/>
   <button type="button" onClick={()=>setLines(x=>[...x,{material_id:"",quantity:"",rate:""}])} className="mt-3 rounded border px-3 py-2 text-sm">+ Add material line</button>
   <div className="mt-4 grid gap-3 md:grid-cols-4">
-   <input name="transport_charges" type="number" min="0" step="0.01" value={transport} onChange={e=>setTransport(e.target.value)} placeholder="Transport charges" className="rounded border px-3 py-2 text-sm"/>
-   <input name="other_charges" type="number" min="0" step="0.01" value={other} onChange={e=>setOther(e.target.value)} placeholder="Other charges" className="rounded border px-3 py-2 text-sm"/>
-   <input name="paid_now" type="number" min="0" step="0.01" placeholder="0" className="mt-1 w-full rounded border px-3 py-2 text-sm"/></label>
+   <label className="text-xs font-medium text-muted-foreground">Transport charges (Rs)<input name="transport_charges" type="number" min="0" step="0.01" value={transport} onChange={e=>setTransport(e.target.value)} placeholder="0" className="mt-1 w-full rounded border px-3 py-2 text-sm text-foreground"/></label>
+   <label className="text-xs font-medium text-muted-foreground">Other charges (Rs)<input name="other_charges" type="number" min="0" step="0.01" value={other} onChange={e=>setOther(e.target.value)} placeholder="0" className="mt-1 w-full rounded border px-3 py-2 text-sm text-foreground"/></label>
+   <label className="text-xs font-medium text-muted-foreground">Paid now (optional)<input name="paid_now" type="number" min="0" step="0.01" placeholder="0" className="mt-1 w-full rounded border px-3 py-2 text-sm text-foreground"/></label>
    <div className="rounded bg-gray-50 px-3 py-2"><div className="text-xs text-muted-foreground">Invoice total</div><div className="font-semibold">Rs {total.toLocaleString("en-PK",{maximumFractionDigits:2})}</div></div>
   </div>
   {state.error?<p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>:null}
