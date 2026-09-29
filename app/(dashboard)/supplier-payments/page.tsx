@@ -37,10 +37,14 @@ export default async function SupplierPaymentsPage() {
     supabase.from("supplier_payments").select("id,project_id,supplier_id,amount,payment_date,payment_method,reference_number,status,suppliers(name),projects(project_code,project_name)").order("payment_date",{ascending:false}).limit(100),
   ]);
 
-  const options=(payables??[]).filter((x:any)=>Number(x.outstanding_payable)>0).map((x:any)=>({
+  const outstanding=(payables??[]).filter((x:any)=>Number(x.outstanding_payable)>0);
+  const projectLabel=(projectId:string)=>{
+    const p=(projects??[]).find((x:any)=>x.id===projectId);
+    return p ? `${p.project_code} — ${p.project_name}` : "Project";
+  };
+  const options=outstanding.map((x:any)=>({
     project_id:x.project_id,supplier_id:x.supplier_id,supplier_name:x.supplier_name,
-    balance:Number(x.outstanding_payable),
-    project_label:(projects??[]).find((p:any)=>p.id===x.project_id)?.project_code+" — "+((projects??[]).find((p:any)=>p.id===x.project_id)?.project_name??"Project")
+    balance:Number(x.outstanding_payable),project_label:projectLabel(x.project_id)
   }));
 
   return <div className="space-y-6">
@@ -50,7 +54,7 @@ export default async function SupplierPaymentsPage() {
     <section className="overflow-hidden rounded-xl border bg-white">
       <h2 className="border-b px-4 py-3 font-semibold">Outstanding supplier balances</h2>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-50 text-left"><tr><th className="px-4 py-2">Project</th><th>Supplier</th><th className="text-right">Purchased</th><th className="text-right">Paid</th><th className="pr-4 text-right">Balance</th></tr></thead>
-      <tbody>{(payables??[]).map((r:any)=><tr key={r.project_id+r.supplier_id} className="border-t"><td className="px-4 py-2">{options.find((o:any)=>o.project_id===r.project_id)?.project_label??"Project"}</td><td>{r.supplier_name}</td><td className="text-right">{pkr(r.total_purchased)}</td><td className="text-right">{pkr(r.total_paid)}</td><td className="pr-4 text-right font-semibold">{pkr(r.outstanding_payable)}</td></tr>)}</tbody></table></div>
+      <tbody>{outstanding.length?outstanding.map((r:any)=><tr key={r.project_id+r.supplier_id} className="border-t"><td className="px-4 py-2">{projectLabel(r.project_id)}</td><td>{r.supplier_name}</td><td className="text-right">{pkr(r.total_purchased)}</td><td className="text-right">{pkr(r.total_paid)}</td><td className="pr-4 text-right font-semibold">{pkr(r.outstanding_payable)}</td></tr>):<tr><td colSpan={5} className="p-8 text-center text-slate-500">No outstanding supplier balances.</td></tr>}</tbody></table></div>
     </section>
     <section className="overflow-hidden rounded-xl border bg-white">
       <h2 className="border-b px-4 py-3 font-semibold">Payment register</h2>
