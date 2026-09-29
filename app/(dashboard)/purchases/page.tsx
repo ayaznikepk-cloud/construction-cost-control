@@ -6,7 +6,8 @@ import {pkr,fmtDate} from "@/lib/format";
 const textValue=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 const num=(f:FormData,k:string)=>{const n=Number(f.get(k)??0);return Number.isFinite(n)?n:0};
 
-async function createPurchase(formData:FormData){"use server";
+async function createPurchase(_state:{error:string|null;success:string|null},formData:FormData):Promise<{error:string|null;success:string|null}>{"use server";
+ try{
  const supabase=createClient();
  const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error("Sign in required.");
  let raw:any[]=[]; try{raw=JSON.parse(textValue(formData,"items_json"));}catch{throw new Error("Invalid purchase lines.");}
