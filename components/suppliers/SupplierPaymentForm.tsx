@@ -10,7 +10,8 @@ const initial:Result={ok:false};
 function Submit(){const {pending}=useFormStatus();return <button disabled={pending} className="rounded bg-blue-600 px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{pending?"Recording…":"Record supplier payment"}</button>}
 
 export default function SupplierPaymentForm({options,action}:{options:Option[];action:(fd:FormData)=>Promise<Result>}){
-  const [state,formAction]=useFormState(action,initial); const ref=useRef<HTMLFormElement>(null);
+  async function formStateAction(_previousState:Result,formData:FormData):Promise<Result>{return action(formData);}
+  const [state,formAction]=useFormState(formStateAction,initial); const ref=useRef<HTMLFormElement>(null);
   const [project,setProject]=useState(""); const [supplier,setSupplier]=useState("");
   const projects=useMemo(()=>Array.from(new Map(options.map(o=>[o.project_id,o.project_label]))),[options]);
   const suppliers=options.filter(o=>o.project_id===project);
