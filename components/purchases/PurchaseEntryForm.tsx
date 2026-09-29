@@ -1,5 +1,5 @@
 "use client";
-import {useMemo,useState} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import {useFormState,useFormStatus} from "react-dom";
 
 type Project={id:string;project_code:string;project_name:string};
@@ -13,10 +13,12 @@ export default function PurchaseEntryForm({projects,suppliers,materials,action}:
  const [lines,setLines]=useState<Line[]>([{material_id:"",quantity:"",rate:""}]);
  const [transport,setTransport]=useState("0"),[other,setOther]=useState("0");
  const [state,formAction]=useFormState(action,{error:null,success:null});
+ const formRef=useRef<HTMLFormElement>(null);
+ useEffect(()=>{if(state.success){formRef.current?.reset();setLines([{material_id:"",quantity:"",rate:""}]);setTransport("0");setOther("0");}},[state.success]);
  const subtotal=useMemo(()=>lines.reduce((s,l)=>s+(Number(l.quantity)||0)*(Number(l.rate)||0),0),[lines]);
  const total=subtotal+(Number(transport)||0)+(Number(other)||0);
  const setLine=(i:number,k:keyof Line,v:string)=>setLines(x=>x.map((l,n)=>n===i?{...l,[k]:v}:l));
- return <form action={formAction} className="rounded-xl border border-border bg-white p-4">
+ return <form ref={formRef} action={formAction} className="rounded-xl border border-border bg-white p-4">
   <h2 className="font-semibold">Record material purchase</h2>
   <p className="mt-1 text-xs text-muted-foreground">Posting a purchase receives the material into the project store. Supplier payment can be recorded now or later.</p>
   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
