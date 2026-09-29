@@ -55,6 +55,7 @@ const sections = [
     icon: Settings,
     links: [
       { href: "/setup/suppliers", label: "Suppliers" },
+      { href: "/setup/materials", label: "Materials" },
       { href: "/setup/labour", label: "Labour" },
       { href: "/setup/users", label: "Users" },
       { href: "/setup/settings", label: "Settings" },
