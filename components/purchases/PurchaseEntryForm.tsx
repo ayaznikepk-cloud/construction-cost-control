@@ -1,18 +1,22 @@
 "use client";
 import {useMemo,useState} from "react";
+import {useFormState,useFormStatus} from "react-dom";
 
 type Project={id:string;project_code:string;project_name:string};
 type Supplier={id:string;name:string};
 type Material={id:string;material_code:string;name:string;units:{code:string}|null};
 type Line={material_id:string;quantity:string;rate:string};
 
-export default function PurchaseEntryForm({projects,suppliers,materials,action}:{projects:Project[];suppliers:Supplier[];materials:Material[];action:(f:FormData)=>void}){
+type FormState={error:string|null;success:string|null};
+function SubmitButton(){const {pending}=useFormStatus();return <button disabled={pending} className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{pending?"Posting purchase...":"Post purchase & receive stock"}</button>}
+export default function PurchaseEntryForm({projects,suppliers,materials,action}:{projects:Project[];suppliers:Supplier[];materials:Material[];action:(s:FormState,f:FormData)=>Promise<FormState>}){
  const [lines,setLines]=useState<Line[]>([{material_id:"",quantity:"",rate:""}]);
  const [transport,setTransport]=useState("0"),[other,setOther]=useState("0");
+ const [state,formAction]=useFormState(action,{error:null,success:null});
  const subtotal=useMemo(()=>lines.reduce((s,l)=>s+(Number(l.quantity)||0)*(Number(l.rate)||0),0),[lines]);
  const total=subtotal+(Number(transport)||0)+(Number(other)||0);
  const setLine=(i:number,k:keyof Line,v:string)=>setLines(x=>x.map((l,n)=>n===i?{...l,[k]:v}:l));
- return <form action={action} className="rounded-xl border border-border bg-white p-4">
+ return <form action={formAction} className="rounded-xl border border-border bg-white p-4">
   <h2 className="font-semibold">Record material purchase</h2>
   <p className="mt-1 text-xs text-muted-foreground">Posting a purchase receives the material into the project store. Supplier payment can be recorded now or later.</p>
   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -34,9 +38,11 @@ export default function PurchaseEntryForm({projects,suppliers,materials,action}:
   <div className="mt-4 grid gap-3 md:grid-cols-4">
    <input name="transport_charges" type="number" min="0" step="0.01" value={transport} onChange={e=>setTransport(e.target.value)} placeholder="Transport charges" className="rounded border px-3 py-2 text-sm"/>
    <input name="other_charges" type="number" min="0" step="0.01" value={other} onChange={e=>setOther(e.target.value)} placeholder="Other charges" className="rounded border px-3 py-2 text-sm"/>
-   <input name="paid_now" type="number" min="0" step="0.01" placeholder="Paid now (optional)" className="rounded border px-3 py-2 text-sm"/>
+   <input name="paid_now" type="number" min="0" step="0.01" placeholder="0" className="mt-1 w-full rounded border px-3 py-2 text-sm"/></label>
    <div className="rounded bg-gray-50 px-3 py-2"><div className="text-xs text-muted-foreground">Invoice total</div><div className="font-semibold">Rs {total.toLocaleString("en-PK",{maximumFractionDigits:2})}</div></div>
   </div>
-  <button className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white">Post purchase & receive stock</button>
+  {state.error?<p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>:null}
+  {state.success?<p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{state.success}</p>:null}
+  <SubmitButton/>
  </form>
 }
