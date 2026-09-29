@@ -17,6 +17,8 @@ async function createPurchase(_state:{error:string|null;success:string|null},for
  const {error}=await supabase.rpc("create_purchase",{p_project:textValue(formData,"project_id"),p_supplier:textValue(formData,"supplier_id"),p_invoice_number:textValue(formData,"invoice_number"),p_invoice_date:textValue(formData,"invoice_date"),p_transport:num(formData,"transport_charges"),p_other:num(formData,"other_charges"),p_items:items,p_paid_now:num(formData,"paid_now")});
  if(error) throw new Error(error.message);
  revalidatePath("/purchases"); revalidatePath("/dashboard");
+ return {error:null,success:"Purchase posted and stock received."};
+ }catch(e){return {error:e instanceof Error?e.message:"Unable to post purchase.",success:null};}
 }
 
 export const dynamic="force-dynamic";
