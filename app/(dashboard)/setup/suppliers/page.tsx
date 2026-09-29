@@ -22,10 +22,23 @@ async function addSupplier(formData: FormData) {
   const name = value(formData, "name");
   if (!name) throw new Error("Supplier name is required.");
 
+  const normalizedName = name.replace(/\s+/g, " ").trim();
+  const { data: existingSuppliers, error: duplicateCheckError } = await supabase
+    .from("suppliers")
+    .select("id,name")
+    .eq("org_id", userRow.org_id);
+
+  if (duplicateCheckError) throw new Error(`Could not check existing suppliers: ${duplicateCheckError.message}`);
+
+  const duplicate = (existingSuppliers ?? []).some(
+    (supplier) => supplier.name.replace(/\s+/g, " ").trim().toLocaleLowerCase() === normalizedName.toLocaleLowerCase()
+  );
+  if (duplicate) throw new Error("A supplier with this name already exists.");
+
   const optional = (key: string) => value(formData, key) || null;
   const { error } = await supabase.from("suppliers").insert({
     org_id: userRow.org_id,
-    name,
+    name: normalizedName,
     contact_person: optional("contact_person"),
     phone: optional("phone"),
     address: optional("address"),
@@ -77,7 +90,7 @@ export default async function SuppliersPage() {
           <input name="tax_registration" placeholder="NTN / tax registration" className="rounded-md border border-border px-3 py-2 text-sm" />
           <input name="address" placeholder="Address" className="rounded-md border border-border px-3 py-2 text-sm md:col-span-2" />
         </div>
-        <button className="mt-3 w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white">Add supplier</button>
+        <button type="submit" className="mt-3 w-full rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90">Add supplier</button>
       </form>
 
       <section className="overflow-hidden rounded-xl border border-border bg-white">
