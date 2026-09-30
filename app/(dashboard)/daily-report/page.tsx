@@ -106,7 +106,7 @@ export default async function DailyReportPage({ searchParams }: { searchParams?:
   const editing = searchParams?.edit ? allReports.find((r) => r.id === searchParams.edit) : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Daily Site Report</h1>
         <p className="text-sm text-gray-600">Site narrative plus an automatic operational snapshot from Labour, Materials and Work Progress.</p>
