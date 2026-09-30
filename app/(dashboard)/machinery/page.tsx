@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 export const dynamic="force-dynamic";
 async function addEquipment(fd:FormData){"use server";const s=createClient();const {data:{user}}=await s.auth.getUser();if(!user)return;const {data:u}=await s.from("users").select("org_id").eq("id",user.id).single();const name=String(fd.get("name")||"").trim();if(name&&u?.org_id)await s.from("equipment").insert({org_id:u.org_id,name,ownership:String(fd.get("ownership")||"owned")});revalidatePath("/machinery")}
 async function addLog(fd:FormData){"use server";const s=createClient();await s.from("equipment_logs").insert({equipment_id:String(fd.get("equipment_id")),project_id:String(fd.get("project_id")),log_date:String(fd.get("log_date")),operating_hours:Number(fd.get("operating_hours")||0),idle_hours:Number(fd.get("idle_hours")||0),fuel_consumption:Number(fd.get("fuel_consumption")||0),rental_cost:Number(fd.get("rental_cost")||0),maintenance_cost:Number(fd.get("maintenance_cost")||0),boq_item_id:String(fd.get("boq_item_id")||"")||null});revalidatePath("/machinery")}
