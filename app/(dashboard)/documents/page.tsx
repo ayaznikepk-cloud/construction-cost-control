@@ -14,22 +14,22 @@ async function uploadDocument(f:FormData){
   if(!user){go("error","Sign in required.");return;}
   const projectId=tv(f,"project_id"),title=tv(f,"title"),category=tv(f,"category"),reference=tv(f,"reference"),documentDate=tv(f,"document_date"),notes=tv(f,"notes");
   const raw=f.get("file");
-  if(!projectId||!title||!category)go("error","Project, category and title are required.");
+  if(!projectId||!title||!category){go("error","Project, category and title are required.");return;}
   if(!(raw instanceof File)||raw.size===0){go("error","Document file is required.");return;}
   const file=raw;
-  if(!["application/pdf","image/jpeg","image/png"].includes(file.type))go("error","Document must be PDF, JPG or PNG.");
-  if(file.size>10*1024*1024)go("error","Document must be 10 MB or smaller.");
+  if(!["application/pdf","image/jpeg","image/png"].includes(file.type)){go("error","Document must be PDF, JPG or PNG.");return;}
+  if(file.size>10*1024*1024){go("error","Document must be 10 MB or smaller.");return;}
 
   const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
   const storagePath=`${user.id}/documents/${crypto.randomUUID()}-${safe}`;
   const {error:uploadError}=await s.storage.from("project-documents").upload(storagePath,file,{contentType:file.type,upsert:false});
-  if(uploadError)go("error","Could not upload document: "+uploadError.message);
+  if(uploadError){go("error","Could not upload document: "+uploadError.message);return;}
 
   const {data:attachment,error:attachmentError}=await s.from("attachments").insert({storage_path:storagePath,file_name:file.name,mime_type:file.type,uploaded_by:user.id}).select("id").single();
-  if(attachmentError){await s.storage.from("project-documents").remove([storagePath]);go("error","Could not save attachment: "+attachmentError.message);}
+  if(attachmentError||!attachment){await s.storage.from("project-documents").remove([storagePath]);go("error","Could not save attachment: "+(attachmentError?.message??"No attachment record returned."));return;}
 
   const {error}=await s.from("documents").insert({project_id:projectId,title,category,reference,document_date:documentDate,notes,attachment_id:attachment.id,uploaded_by:user.id});
-  if(error){await s.from("attachments").delete().eq("id",attachment.id);await s.storage.from("project-documents").remove([storagePath]);go("error","Could not save document: "+error.message);}
+  if(error){await s.from("attachments").delete().eq("id",attachment.id);await s.storage.from("project-documents").remove([storagePath]);go("error","Could not save document: "+error.message);return;}
   go("success","Document uploaded.");
 }
 
