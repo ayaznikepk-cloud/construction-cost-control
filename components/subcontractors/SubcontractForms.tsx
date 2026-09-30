@@ -1,9 +1,9 @@
 "use client";
 import {useRef} from "react";
 
-export function ResetForm({action,children,className}:{action:(formData:FormData)=>Promise<void>;children:React.ReactNode;className?:string}){
+export function ResetForm({action,children,className}:{action:(formData:FormData)=>void;children:React.ReactNode;className?:string}){
  const ref=useRef<HTMLFormElement>(null);
- return <form ref={ref} action={async fd=>{await action(fd);ref.current?.reset()}} className={className}>{children}</form>
+ return <form ref={ref} action={action} onSubmit={()=>{window.setTimeout(()=>ref.current?.reset(),0)}} className={className}>{children}</form>
 }
 export function SubcontractorPicker({people}:{people:{id:string;name:string}[]}){
  return <div className="min-w-0"><label className="mb-1 block text-xs font-medium text-gray-600">Subcontractor</label>
