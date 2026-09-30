@@ -146,7 +146,7 @@ export default async function DailyReportPage({ searchParams }: { searchParams?:
           return <article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><div className="font-semibold">{r.report_date} · {projectMap.get(r.project_id) ?? "Project"}</div><div className="mt-1 text-sm text-gray-500">Weather: {r.weather || "—"}</div></div>
-              <Link href={"/daily-report?edit=" + r.id} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Edit report</Link>
+              <Link href={"/daily-report?edit=" + r.id} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Edit report</Link>\n              <Link href={"/daily-report/" + r.id} className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">View / Print</Link>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <Snapshot title="Labour" empty={!l} lines={l ? [`Present: ${l.present}`, `Half day: ${l.half}`, `Overtime: ${l.overtime.toLocaleString("en-PK")} hrs`] : []} />
@@ -167,7 +167,7 @@ export default async function DailyReportPage({ searchParams }: { searchParams?:
 }
 
 function Snapshot({ title, lines, empty }: { title: string; lines: string[]; empty: boolean }) {
-  return <div className="rounded-lg bg-gray-50 p-3"><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</div>{empty ? <div className="text-sm text-gray-400">No activity recorded</div> : <div className="space-y-1 text-sm">{lines.slice(0, 6).map((line, i) => <div key={i} className="line-clamp-2" title={line}>{line}</div>)}{lines.length > 6 && <div className="text-xs text-gray-500">+ {lines.length - 6} more</div>}</div>}</div>;
+  return <div className="rounded-lg bg-gray-50 p-3"><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</div>{empty ? <div className="text-sm text-gray-400">No activity recorded</div> : <div className="space-y-1 text-sm">{lines.slice(0, 6).map((line, i) => <div key={i} className="whitespace-normal break-words leading-5" title={line}>{line}</div>)}{lines.length > 6 && <div className="text-xs text-gray-500">+ {lines.length - 6} more</div>}</div>}</div>;
 }
 function Note({ label, value }: { label: string; value: string | null }) {
   return <div><div className="text-xs font-medium text-gray-500">{label}</div><div className="mt-1 text-gray-800">{value || "—"}</div></div>;
