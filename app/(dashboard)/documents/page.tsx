@@ -15,8 +15,8 @@ async function uploadDocument(f:FormData){
   const projectId=tv(f,"project_id"),title=tv(f,"title"),category=tv(f,"category"),reference=tv(f,"reference"),documentDate=tv(f,"document_date"),notes=tv(f,"notes");
   const raw=f.get("file");
   if(!projectId||!title||!category)go("error","Project, category and title are required.");
-  if(!(raw instanceof File)||raw.size===0)go("error","Document file is required.");
-  const file:File=raw;
+  if(!(raw instanceof File)||raw.size===0){go("error","Document file is required.");return;}
+  const file=raw;
   if(!["application/pdf","image/jpeg","image/png"].includes(file.type))go("error","Document must be PDF, JPG or PNG.");
   if(file.size>10*1024*1024)go("error","Document must be 10 MB or smaller.");
 
