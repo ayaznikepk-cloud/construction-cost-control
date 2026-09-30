@@ -8,12 +8,12 @@ import { notFound } from "next/navigation";
 const tabs = [
   { href: "overview", label: "Overview" },
   { href: "boq", label: "BOQ" },
-  { href: "costs", label: "Costs" },
-  { href: "labour", label: "Labour" },
-  { href: "materials", label: "Materials" },
   { href: "progress", label: "Progress" },
   { href: "bills", label: "Bills" },
-  { href: "documents", label: "Documents" },
+  { href: "/materials", label: "Materials", global: true },
+  { href: "/labour", label: "Labour", global: true },
+  { href: "/expenses", label: "Costs", global: true },
+  { href: "/documents", label: "Documents", global: true },
 ];
 
 export default async function ProjectWorkspaceLayout({
@@ -44,7 +44,7 @@ export default async function ProjectWorkspaceLayout({
           {tabs.map((tab) => (
             <Link
               key={tab.href}
-              href={`/projects/${params.projectId}/${tab.href}`}
+              href={tab.global ? tab.href : `/projects/${params.projectId}/${tab.href}`}
               className="shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-gray-600 hover:border-active hover:text-active md:px-4"
             >
               {tab.label}
