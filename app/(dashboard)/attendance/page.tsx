@@ -67,7 +67,7 @@ export default async function AttendancePage({
 
   const { data: projects } = await supabase
     .from("projects")
-    .select("id, project_name")
+    .select("id, project_code, project_name")
     .eq("status", "active")
     .order("project_name");
 
@@ -106,15 +106,15 @@ export default async function AttendancePage({
     <div>
       <h1 className="mb-6 text-lg font-semibold">Labour Attendance</h1>
 
-      <form method="GET" className="mb-4 flex flex-wrap items-center gap-3">
+      <form method="GET" className="mb-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3">
         <select
           name="project"
           defaultValue={projectId}
-          className="rounded-md border border-border bg-white px-3 py-2 text-sm"
+          className="col-span-2 min-w-0 w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
         >
           {projects?.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.project_name}
+              {p.project_code} — {p.project_name}
             </option>
           ))}
         </select>
@@ -122,7 +122,7 @@ export default async function AttendancePage({
           type="date"
           name="date"
           defaultValue={date}
-          className="rounded-md border border-border bg-white px-3 py-2 text-sm"
+          className="min-w-0 w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
         />
         <button className="rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           Go
