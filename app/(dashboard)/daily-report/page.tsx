@@ -146,7 +146,8 @@ export default async function DailyReportPage({ searchParams }: { searchParams?:
           return <article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><div className="font-semibold">{r.report_date} · {projectMap.get(r.project_id) ?? "Project"}</div><div className="mt-1 text-sm text-gray-500">Weather: {r.weather || "—"}</div></div>
-              <Link href={"/daily-report?edit=" + r.id} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Edit report</Link>\n              <Link href={"/daily-report/" + r.id} className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">View / Print</Link>
+              <Link href={"/daily-report?edit=" + r.id} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">Edit report</Link>
+              <Link href={"/daily-report/" + r.id} className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700">View / Print</Link>
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <Snapshot title="Labour" empty={!l} lines={l ? [`Present: ${l.present}`, `Half day: ${l.half}`, `Overtime: ${l.overtime.toLocaleString("en-PK")} hrs`] : []} />
