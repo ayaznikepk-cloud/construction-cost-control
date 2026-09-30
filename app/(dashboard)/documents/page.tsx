@@ -11,7 +11,7 @@ async function uploadDocument(f:FormData){
   "use server";
   const s=createClient();
   const {data:{user}}=await s.auth.getUser();
-  if(!user)go("error","Sign in required.");
+  if(!user){go("error","Sign in required.");return;}
   const projectId=tv(f,"project_id"),title=tv(f,"title"),category=tv(f,"category"),reference=tv(f,"reference"),documentDate=tv(f,"document_date"),notes=tv(f,"notes");
   const raw=f.get("file");
   if(!projectId||!title||!category)go("error","Project, category and title are required.");
