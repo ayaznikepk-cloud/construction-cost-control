@@ -8,22 +8,26 @@ type Material={id:string;material_code:string;name:string;units:{code:string}|nu
 type Line={material_id:string;quantity:string;rate:string};
 
 type FormState={error:string|null;success:string|null};
+function SearchPicker({name,placeholder,items,required=false}:{name:string;placeholder:string;items:{id:string;label:string;search:string}[];required?:boolean}){const[id,setId]=useState(""),[q,setQ]=useState(""),[open,setOpen]=useState(false);const matches=useMemo(()=>{const s=q.trim().toLowerCase();return items.filter(x=>!s||x.search.includes(s)).slice(0,50)},[items,q]);return <div className="relative min-w-0"><input type="hidden" name={name} value={id}/><input required={required&&!id} value={q} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)} onChange={e=>{setQ(e.target.value);setId("");setOpen(true)}} placeholder={placeholder} className="min-w-0 w-full rounded border px-3 py-2 text-sm"/>{open&&<div className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded border bg-white shadow-lg">{matches.length?matches.map(x=><button key={x.id} type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>{setId(x.id);setQ(x.label);setOpen(false)}} className="block w-full border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-gray-50">{x.label}</button>):<div className="p-3 text-sm text-muted-foreground">No matching records.</div>}</div>}</div>}
 function SubmitButton(){const {pending}=useFormStatus();return <button disabled={pending} className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">{pending?"Posting purchase...":"Post purchase & receive stock"}</button>}
 export default function PurchaseEntryForm({projects,suppliers,materials,action}:{projects:Project[];suppliers:Supplier[];materials:Material[];action:(s:FormState,f:FormData)=>Promise<FormState>}){
  const [lines,setLines]=useState<Line[]>([{material_id:"",quantity:"",rate:""}]);
  const [transport,setTransport]=useState("0"),[other,setOther]=useState("0");
+ const [projectKey,setProjectKey]=useState(0),[supplierKey,setSupplierKey]=useState(0);
  const [state,formAction]=useFormState(action,{error:null,success:null});
  const formRef=useRef<HTMLFormElement>(null);
- useEffect(()=>{if(state.success){formRef.current?.reset();setLines([{material_id:"",quantity:"",rate:""}]);setTransport("0");setOther("0");}},[state.success]);
+ useEffect(()=>{if(state.success){formRef.current?.reset();setLines([{material_id:"",quantity:"",rate:""}]);setTransport("0");setOther("0");setProjectKey(x=>x+1);setSupplierKey(x=>x+1);}},[state.success]);
  const subtotal=useMemo(()=>lines.reduce((s,l)=>s+(Number(l.quantity)||0)*(Number(l.rate)||0),0),[lines]);
  const total=subtotal+(Number(transport)||0)+(Number(other)||0);
  const setLine=(i:number,k:keyof Line,v:string)=>setLines(x=>x.map((l,n)=>n===i?{...l,[k]:v}:l));
+ const projectItems=useMemo(()=>projects.map(p=>({id:p.id,label:`${p.project_code} — ${p.project_name}`,search:`${p.project_code} ${p.project_name}`.toLowerCase()})),[projects]);
+ const supplierItems=useMemo(()=>suppliers.map(s=>({id:s.id,label:s.name,search:s.name.toLowerCase()})),[suppliers]);
  return <form ref={formRef} action={formAction} className="min-w-0 rounded-xl border border-border bg-white p-4">
   <h2 className="font-semibold">Record material purchase</h2>
   <p className="mt-1 text-xs text-muted-foreground">Posting a purchase receives the material into the project store. Supplier payment can be recorded now or later.</p>
   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-   <select required name="project_id" className="min-w-0 w-full rounded border px-3 py-2 text-sm"><option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_code} — {p.project_name}</option>)}</select>
-   <select required name="supplier_id" className="min-w-0 w-full rounded border px-3 py-2 text-sm"><option value="">Select supplier</option>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+   <SearchPicker key={`project-${projectKey}`} required name="project_id" placeholder="Search project code or name" items={projectItems}/>
+   <SearchPicker key={`supplier-${supplierKey}`} required name="supplier_id" placeholder="Search supplier" items={supplierItems}/>
    <input name="invoice_number" placeholder="Supplier invoice no." className="min-w-0 w-full rounded border px-3 py-2 text-sm"/>
    <input required type="date" name="invoice_date" className="min-w-0 w-full rounded border px-3 py-2 text-sm"/>
   </div>
