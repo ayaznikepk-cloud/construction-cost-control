@@ -55,18 +55,18 @@ export default function AppSidebar() {
   }, [open]);
 
   return <>
-    <aside className="hidden w-64 flex-shrink-0 bg-navy text-gray-300 md:flex md:flex-col">
+    <aside className="hidden w-64 flex-shrink-0 bg-navy text-gray-300 lg:flex lg:flex-col">
       <div className="px-5 py-5 text-sm font-semibold text-white">Construction Cost Control</div>
       <Navigation />
     </aside>
 
-    <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 md:hidden">
+    <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
       <button type="button" aria-label="Open navigation" onClick={() => setOpen(true)}
         className="rounded-md border p-2 text-gray-700"><Menu size={20} /></button>
       <span className="truncate text-sm font-semibold text-gray-900">Construction Cost Control</span>
     </header>
 
-    {open && <div className="fixed inset-0 z-40 md:hidden">
+    {open && <div className="fixed inset-0 z-40 lg:hidden">
       <button aria-label="Close navigation" className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
       <aside className="relative flex h-full w-[82vw] max-w-72 flex-col bg-navy text-gray-300 shadow-xl">
         <div className="flex items-center justify-between px-5 py-4">

@@ -58,7 +58,20 @@ export default async function WorkerLedgerPage() {
 
       <LedgerForms workers={workers ?? []} giveAdvance={giveAdvance} payWages={payWages} />
 
-      <div className="rounded-lg border border-border bg-white">
+      <div className="space-y-3 md:hidden">
+        {error && <div className="rounded-lg border bg-white p-4 text-sm text-danger">Could not load ledger: {error.message}</div>}
+        {!error && (ledger ?? []).length === 0 && <div className="rounded-lg border bg-white p-4 text-sm text-gray-500">No workers yet — add them under Setup → Labour.</div>}
+        {ledger?.map((l) => <div key={l.worker_id} className="rounded-lg border border-border bg-white p-4">
+          <div className="font-medium">{l.worker_name}</div>
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <div><div className="text-xs text-gray-500">Wages earned</div><div>{pkr(l.total_wages_earned)}</div></div>
+            <div><div className="text-xs text-gray-500">Paid</div><div>{pkr(l.total_paid)}</div></div>
+            <div><div className="text-xs text-gray-500">Wages payable</div><div className="font-medium">{pkr(l.outstanding_wage_payable)}</div></div>
+            <div><div className="text-xs text-gray-500">Advance outstanding</div><div>{pkr(l.outstanding_advance)}</div></div>
+          </div>
+        </div>)}
+      </div>
+      <div className="hidden rounded-lg border border-border bg-white md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-gray-500">

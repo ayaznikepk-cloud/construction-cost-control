@@ -123,7 +123,7 @@ export default async function DailyReportPage({ searchParams }: { searchParams?:
             <option value="">Select project</option>
             {(projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.project_code} — {p.project_name}</option>)}
           </select>
-          <input name="report_date" type="date" required defaultValue={editing?.report_date ?? ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          <input name="report_date" type="date" required defaultValue={editing?.report_date ?? ""} className="min-w-0 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           <select name="weather" defaultValue={editing?.weather ?? ""} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="">Weather (optional)</option><option>Clear</option><option>Cloudy</option><option>Rain</option><option>Hot</option><option>Windy</option>
           </select>
