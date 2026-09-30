@@ -33,19 +33,28 @@ export default async function ProjectWorkspaceLayout({
   if (!project) notFound();
 
   return (
-    <div>
+    <div className="min-w-0">
       <ProjectHeader project={project} />
 
-      <div className="mb-6 flex gap-1 border-b border-border">
-        {tabs.map((tab) => (
-          <Link
-            key={tab.href}
-            href={`/projects/${params.projectId}/${tab.href}`}
-            className="border-b-2 border-transparent px-4 py-2 text-sm text-gray-600 hover:border-active hover:text-active"
-          >
-            {tab.label}
-          </Link>
-        ))}
+      <div className="relative mb-6 min-w-0 border-b border-border">
+        <div
+          className="flex max-w-full gap-1 overflow-x-auto overscroll-x-contain pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Project sections"
+        >
+          {tabs.map((tab) => (
+            <Link
+              key={tab.href}
+              href={`/projects/${params.projectId}/${tab.href}`}
+              className="shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-gray-600 hover:border-active hover:text-active md:px-4"
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-gray-50 via-gray-50/90 to-transparent md:hidden"
+        />
       </div>
 
       {children}
