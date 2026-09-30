@@ -18,16 +18,16 @@ export default function PurchaseEntryForm({projects,suppliers,materials,action}:
  const subtotal=useMemo(()=>lines.reduce((s,l)=>s+(Number(l.quantity)||0)*(Number(l.rate)||0),0),[lines]);
  const total=subtotal+(Number(transport)||0)+(Number(other)||0);
  const setLine=(i:number,k:keyof Line,v:string)=>setLines(x=>x.map((l,n)=>n===i?{...l,[k]:v}:l));
- return <form ref={formRef} action={formAction} className="rounded-xl border border-border bg-white p-4">
+ return <form ref={formRef} action={formAction} className="min-w-0 rounded-xl border border-border bg-white p-4">
   <h2 className="font-semibold">Record material purchase</h2>
   <p className="mt-1 text-xs text-muted-foreground">Posting a purchase receives the material into the project store. Supplier payment can be recorded now or later.</p>
   <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-   <select required name="project_id" className="rounded border px-3 py-2 text-sm"><option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_code} — {p.project_name}</option>)}</select>
-   <select required name="supplier_id" className="rounded border px-3 py-2 text-sm"><option value="">Select supplier</option>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
-   <input name="invoice_number" placeholder="Supplier invoice no." className="rounded border px-3 py-2 text-sm"/>
-   <input required type="date" name="invoice_date" className="rounded border px-3 py-2 text-sm"/>
+   <select required name="project_id" className="min-w-0 w-full rounded border px-3 py-2 text-sm"><option value="">Select project</option>{projects.map(p=><option key={p.id} value={p.id}>{p.project_code} — {p.project_name}</option>)}</select>
+   <select required name="supplier_id" className="min-w-0 w-full rounded border px-3 py-2 text-sm"><option value="">Select supplier</option>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select>
+   <input name="invoice_number" placeholder="Supplier invoice no." className="min-w-0 w-full rounded border px-3 py-2 text-sm"/>
+   <input required type="date" name="invoice_date" className="min-w-0 w-full rounded border px-3 py-2 text-sm"/>
   </div>
-  <div className="mt-4 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="pb-2">Material</th><th className="pb-2">Qty</th><th className="pb-2">Rate</th><th className="pb-2 text-right">Amount</th><th></th></tr></thead>
+  <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="pb-2">Material</th><th className="pb-2">Qty</th><th className="pb-2">Rate</th><th className="pb-2 text-right">Amount</th><th></th></tr></thead>
    <tbody>{lines.map((l,i)=><tr key={i} className="border-b">
     <td className="py-2 pr-2"><select required value={l.material_id} onChange={e=>setLine(i,"material_id",e.target.value)} className="w-full rounded border px-3 py-2"><option value="">Select material</option>{materials.map(m=><option key={m.id} value={m.id}>{m.material_code} — {m.name}{m.units?.code?" ("+m.units.code+")":""}</option>)}</select></td>
     <td className="py-2 pr-2"><input required min="0.0001" step="any" type="number" value={l.quantity} onChange={e=>setLine(i,"quantity",e.target.value)} className="w-32 rounded border px-3 py-2"/></td>
