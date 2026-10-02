@@ -35,13 +35,15 @@ async function updateAssignments(formData: FormData) {
     throw new Error("You cannot remove your own owner administrator role.");
   }
 
-  if (role.name !== "owner_admin") {
-    if (!projectIds.length) throw new Error("Select at least one project.");
+  if (role.name !== "owner_admin" && projectIds.length) {
+    const uniqueProjectIds = Array.from(new Set(projectIds));
     const { data: validProjects, error: projectError } = await supabase
       .from("projects")
       .select("id")
-      .in("id", projectIds);
-    if (projectError || (validProjects ?? []).length !== new Set(projectIds).size) {
+      .eq("org_id", me.org_id)
+      .in("id", uniqueProjectIds);
+
+    if (projectError || (validProjects ?? []).length !== uniqueProjectIds.length) {
       throw new Error("One or more selected projects are invalid.");
     }
   }
