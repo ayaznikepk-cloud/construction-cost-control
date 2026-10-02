@@ -22,42 +22,51 @@ export default function CreateUserForm({ roles, projects }: { roles: Role[]; pro
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
+
     setPending(true);
     setMessage(null);
 
-    const form = new FormData(event.currentTarget);
-    const full_name = String(form.get("full_name") ?? "").trim();
-    const email = String(form.get("email") ?? "").trim();
-    const password = String(form.get("password") ?? "");
+    try {
+      const form = new FormData(formElement);
+      const full_name = String(form.get("full_name") ?? "").trim();
+      const email = String(form.get("email") ?? "").trim();
+      const password = String(form.get("password") ?? "");
 
-    if (!roleId) {
-      setMessage({ kind: "error", text: "Select a role." });
+      if (!roleId) {
+        setMessage({ kind: "error", text: "Select a role." });
+        return;
+      }
+
+      if (!isAdmin && projectIds.length === 0) {
+        setMessage({ kind: "error", text: "Select at least one project." });
+        return;
+      }
+
+      const supabase = createClient();
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: { full_name, email, password, role_id: roleId, project_ids: isAdmin ? [] : projectIds },
+      });
+
+      if (error || data?.error) {
+        setMessage({ kind: "error", text: data?.error ?? error?.message ?? "Could not create user." });
+        return;
+      }
+
+      formElement.reset();
+      setRoleId("");
+      setProjectIds(projects.length === 1 ? [projects[0].id] : []);
+      setMessage({ kind: "success", text: "User created successfully. They can now sign in with the email and temporary password." });
+      router.refresh();
+    } catch (error) {
+      console.error("Create user failed:", error);
+      setMessage({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Could not create user.",
+      });
+    } finally {
       setPending(false);
-      return;
     }
-    if (!isAdmin && projectIds.length === 0) {
-      setMessage({ kind: "error", text: "Select at least one project." });
-      setPending(false);
-      return;
-    }
-
-    const supabase = createClient();
-    const { data, error } = await supabase.functions.invoke("admin-create-user", {
-      body: { full_name, email, password, role_id: roleId, project_ids: isAdmin ? [] : projectIds },
-    });
-
-    if (error || data?.error) {
-      setMessage({ kind: "error", text: data?.error ?? error?.message ?? "Could not create user." });
-      setPending(false);
-      return;
-    }
-
-    event.currentTarget.reset();
-    setRoleId("");
-    setProjectIds(projects.length === 1 ? [projects[0].id] : []);
-    setMessage({ kind: "success", text: "User created successfully. They can now sign in with the email and temporary password." });
-    setPending(false);
-    router.refresh();
   }
 
   return (
