@@ -47,6 +47,15 @@ export default function WageSheetReview({
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const netFor = (i: Item) => {
+    const e = edits[i.id];
+    const paisa = Math.round(Number(i.gross_wage) * 100) - Math.round(Number(e.recovery || 0) * 100) - Math.round(Number(e.other || 0) * 100);
+    return paisa / 100;
+  };
+  const dirty = items.some(
+    (i) => Number(edits[i.id].recovery || 0) !== Number(i.advance_recovery) || Number(edits[i.id].other || 0) !== Number(i.other_deductions)
+  );
+
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       if (!dirty || busy) return;
@@ -56,15 +65,6 @@ export default function WageSheetReview({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, busy]);
-
-  const netFor = (i: Item) => {
-    const e = edits[i.id];
-    const paisa = Math.round(Number(i.gross_wage) * 100) - Math.round(Number(e.recovery || 0) * 100) - Math.round(Number(e.other || 0) * 100);
-    return paisa / 100;
-  };
-  const dirty = items.some(
-    (i) => Number(edits[i.id].recovery || 0) !== Number(i.advance_recovery) || Number(edits[i.id].other || 0) !== Number(i.other_deductions)
-  );
 
   async function run(fn: () => Promise<ActionResult>, ok: string, after?: () => void) {
     setBusy(true);
