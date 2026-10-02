@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import FormStatusMessage from "@/components/shared/FormStatusMessage";
 
 type Worker = {
   id: string;
@@ -37,16 +38,29 @@ export default function AttendanceForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   function setStatus(workerId: string, status: EntryState["status"]) {
     setEntries((prev) => ({ ...prev, [workerId]: { ...prev[workerId], status } }));
     setSaved(false);
+    setDirty(true);
+    setDirty(true);
   }
 
   function setOT(workerId: string, hours: number) {
     setEntries((prev) => ({ ...prev, [workerId]: { ...prev[workerId], overtime_hours: hours } }));
     setSaved(false);
   }
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!dirty || saving) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, saving]);
 
   const summary = useMemo(() => {
     const values = Object.values(entries);
@@ -77,6 +91,7 @@ export default function AttendanceForm({
 
       await action(formData);
       setSaved(true);
+      setDirty(false);
     } catch (e: any) {
       setError(e?.message ?? "Could not save attendance.");
     } finally {
@@ -94,12 +109,13 @@ export default function AttendanceForm({
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>
+        <div className="mb-4"><FormStatusMessage kind="error">{error}</FormStatusMessage></div>
       )}
       {saved && !error && (
-        <div className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-positive">
-          Attendance saved.
-        </div>
+        <div className="mb-4"><FormStatusMessage kind="success">Attendance saved successfully.</FormStatusMessage></div>
+      )}
+      {dirty && !saving && !saved && (
+        <div className="mb-4"><FormStatusMessage kind="info">You have unsaved attendance changes.</FormStatusMessage></div>
       )}
 
       <div className="divide-y divide-border rounded-lg border border-border bg-white">
@@ -161,7 +177,7 @@ export default function AttendanceForm({
             disabled={saving}
             className="w-full rounded-md bg-active py-3 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Attendance"}
+            {saving ? "Saving attendance..." : "Save attendance"}
           </button>
         </div>
       )}
