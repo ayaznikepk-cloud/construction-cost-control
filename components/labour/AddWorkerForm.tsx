@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import FormStatusMessage from "@/components/shared/FormStatusMessage";
 
 const trades = [
   "Mason", "Helper", "Carpenter", "Steel Fixer", "Electrician", "Plumber",
@@ -16,13 +17,16 @@ export default function AddWorkerForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleAction(formData: FormData) {
     setPending(true);
     setError(null);
+    setSuccess(null);
     try {
       await action(formData);
       formRef.current?.reset();
+      setSuccess("Worker added successfully.");
     } catch (e: any) {
       const message = e?.message ?? "Something went wrong.";
       setError(
@@ -38,7 +42,8 @@ export default function AddWorkerForm({
   return (
     <form ref={formRef} action={handleAction} className="mb-6 rounded-lg border border-border bg-white p-4">
       <div className="mb-3 text-sm font-medium">Add worker</div>
-      {error && <div className="mb-3 text-sm text-danger">{error}</div>}
+      {error && <div className="mb-3"><FormStatusMessage kind="error">{error}</FormStatusMessage></div>}
+      {success && <div className="mb-3"><FormStatusMessage kind="success">{success}</FormStatusMessage></div>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <input
           name="worker_code"
@@ -69,6 +74,7 @@ export default function AddWorkerForm({
           name="daily_wage_rate"
           type="number"
           step="0.01"
+          min="0"
           placeholder="Daily wage (Rs)"
           required
           className="rounded-md border border-border px-3 py-2 text-sm"
@@ -77,6 +83,7 @@ export default function AddWorkerForm({
           name="overtime_rate"
           type="number"
           step="0.01"
+          min="0"
           placeholder="OT rate / hour (Rs)"
           className="rounded-md border border-border px-3 py-2 text-sm"
         />

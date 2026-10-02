@@ -3,23 +3,24 @@ export const dynamic = "force-dynamic";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import CreateUserForm from "@/components/users/CreateUserForm";
+import UserAccessForm, { type AssignmentState } from "@/components/users/UserAccessForm";
 
 const value = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 
-async function updateAssignments(formData: FormData) {
+async function updateAssignments(_state: AssignmentState, formData: FormData): Promise<AssignmentState> {
   "use server";
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Sign in required.");
+  if (!user) return { error: "Your session has expired. Please sign in again.", success: null };
 
   const { data: isAdmin, error: adminError } = await supabase.rpc("auth_is_admin");
-  if (adminError || !isAdmin) throw new Error("Owner administrator access required.");
+  if (adminError || !isAdmin) return { error: "Only the owner administrator can change user access.", success: null };
 
   const userId = value(formData, "user_id");
   const roleId = value(formData, "role_id");
   const projectIds = formData.getAll("project_ids").map(String).filter(Boolean);
 
-  if (!userId || !roleId) throw new Error("User and role are required.");
+  if (!userId || !roleId) return { error: "Select a user role before saving.", success: null };
 
   const [{ data: me }, { data: target }, { data: role }] = await Promise.all([
     supabase.from("users").select("org_id").eq("id", user.id).single(),
@@ -28,11 +29,11 @@ async function updateAssignments(formData: FormData) {
   ]);
 
   if (!me?.org_id || !target || target.org_id !== me.org_id || !role || role.org_id !== me.org_id) {
-    throw new Error("Invalid user or role.");
+    return { error: "That user or role is no longer available. Refresh the page and try again.", success: null };
   }
 
   if (userId === user.id && role.name !== "owner_admin") {
-    throw new Error("You cannot remove your own owner administrator role.");
+    return { error: "Your own owner administrator role is protected and cannot be removed here.", success: null };
   }
 
   if (role.name !== "owner_admin" && projectIds.length) {
@@ -44,36 +45,37 @@ async function updateAssignments(formData: FormData) {
       .in("id", uniqueProjectIds);
 
     if (projectError || (validProjects ?? []).length !== uniqueProjectIds.length) {
-      throw new Error("One or more selected projects are invalid.");
+      return { error: "One of the selected projects is no longer available. Refresh the page and try again.", success: null };
     }
   }
 
   const { error: roleInsertError } = await supabase
     .from("user_roles")
     .upsert({ user_id: userId, role_id: roleId }, { onConflict: "user_id,role_id" });
-  if (roleInsertError) throw new Error(roleInsertError.message);
+  if (roleInsertError) return { error: "Could not save the user's role. Please try again.", success: null };
 
   const { error: roleDeleteError } = await supabase
     .from("user_roles")
     .delete()
     .eq("user_id", userId)
     .neq("role_id", roleId);
-  if (roleDeleteError) throw new Error(roleDeleteError.message);
+  if (roleDeleteError) return { error: "Could not update the user's role. Please try again.", success: null };
 
   const { error: clearAccessError } = await supabase
     .from("user_project_access")
     .delete()
     .eq("user_id", userId);
-  if (clearAccessError) throw new Error(clearAccessError.message);
+  if (clearAccessError) return { error: "Could not update project access. Please try again.", success: null };
 
   if (role.name !== "owner_admin" && projectIds.length) {
     const { error: accessError } = await supabase.from("user_project_access").insert(
       Array.from(new Set(projectIds)).map((project_id) => ({ user_id: userId, project_id }))
     );
-    if (accessError) throw new Error(accessError.message);
+    if (accessError) return { error: "Could not grant project access. Please try again.", success: null };
   }
 
   revalidatePath("/setup/users");
+  return { error: null, success: projectIds.length ? "Access updated successfully." : "Project access revoked successfully." };
 }
 
 export default async function Page() {
@@ -167,55 +169,15 @@ export default async function Page() {
                   </div>
                 </div>
 
-                <form action={updateAssignments} className="mt-4 grid gap-3 lg:grid-cols-[240px_1fr_auto] lg:items-start">
-                  <input type="hidden" name="user_id" value={row.id} />
-                  <label className="text-xs font-medium text-gray-600">
-                    Role
-                    <select
-                      name="role_id"
-                      required
-                      defaultValue={assignedRole?.id ?? ""}
-                      disabled={currentAccount}
-                      className="mt-1 h-10 w-full rounded-md border border-border px-3 text-sm text-gray-900 disabled:bg-gray-50"
-                    >
-                      <option value="">Select role</option>
-                      {(roles ?? []).map((role) => (
-                        <option key={role.id} value={role.id}>{role.name.replaceAll("_", " ")}</option>
-                      ))}
-                    </select>
-                    {currentAccount && <input type="hidden" name="role_id" value={assignedRole?.id ?? ""} />}
-                    {assignedRole?.description && <span className="mt-1 block text-[11px] font-normal text-gray-500">{assignedRole.description}</span>}
-                  </label>
-
-                  <div>
-                    <div className="text-xs font-medium text-gray-600">Project access</div>
-                    {assignedRole?.name === "owner_admin" ? (
-                      <div className="mt-1 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-600">All projects</div>
-                    ) : (
-                      <div className="mt-1 grid gap-2 md:grid-cols-2">
-                        {activeProjects.map((project) => (
-                          <label key={project.id} className="flex items-start gap-2 rounded-md border border-border p-2 text-sm">
-                            <input
-                              type="checkbox"
-                              name="project_ids"
-                              value={project.id}
-                              defaultChecked={assignedProjects.includes(project.id)}
-                              disabled={currentAccount}
-                              className="mt-0.5"
-                            />
-                            <span><b>{project.project_code}</b> — {project.project_name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {!currentAccount ? (
-                    <button className="h-10 rounded-md border border-active px-4 text-sm font-medium text-active lg:mt-5">Save access</button>
-                  ) : (
-                    <div className="text-xs text-gray-500 lg:mt-7">Protected from self-demotion.</div>
-                  )}
-                </form>
+                <UserAccessForm
+                  userId={row.id}
+                  currentAccount={currentAccount}
+                  assignedRole={assignedRole}
+                  assignedProjects={assignedProjects}
+                  roles={roles ?? []}
+                  projects={activeProjects}
+                  action={updateAssignments}
+                />
               </div>
             );
           })}

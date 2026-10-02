@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionResult } from "@/lib/format";
+import FormStatusMessage from "@/components/shared/FormStatusMessage";
 
 export default function GenerateWageSheetForm({
   projects,
@@ -18,13 +19,18 @@ export default function GenerateWageSheetForm({
   async function handleAction(formData: FormData) {
     setPending(true);
     setError(null);
-    const result = await action(formData);
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await action(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.push(`/labour-payments/wage-sheets/${result.id}`);
+    } catch {
+      setError("Could not generate the wage sheet. Your selected dates have been kept so you can try again.");
+    } finally {
+      setPending(false);
     }
-    router.push(`/labour-payments/wage-sheets/${result.id}`);
   }
 
   return (
@@ -34,9 +40,9 @@ export default function GenerateWageSheetForm({
         Builds a draft from the attendance already recorded for the period. You can review and adjust
         deductions before approving.
       </p>
-      {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>}
+      {error && <div className="mb-3"><FormStatusMessage kind="error">{error}</FormStatusMessage></div>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <select name="project_id" required className="col-span-2 rounded-md border border-border px-3 py-2 text-sm md:col-span-1">
+        <select name="project_id" required defaultValue={projects.length===1?projects[0].id:""} className="col-span-2 rounded-md border border-border px-3 py-2 text-sm md:col-span-1">
           <option value="">Select project</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
@@ -56,7 +62,7 @@ export default function GenerateWageSheetForm({
           disabled={pending}
           className="col-span-2 self-end rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 md:col-span-1"
         >
-          {pending ? "Generating..." : "Generate draft"}
+          {pending ? "Generating wage sheet..." : "Generate draft"}
         </button>
       </div>
     </form>
