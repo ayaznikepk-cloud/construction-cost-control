@@ -44,12 +44,12 @@ export default function AttendanceForm({
     setEntries((prev) => ({ ...prev, [workerId]: { ...prev[workerId], status } }));
     setSaved(false);
     setDirty(true);
-    setDirty(true);
   }
 
   function setOT(workerId: string, hours: number) {
     setEntries((prev) => ({ ...prev, [workerId]: { ...prev[workerId], overtime_hours: hours } }));
     setSaved(false);
+    setDirty(true);
   }
 
   useEffect(() => {
