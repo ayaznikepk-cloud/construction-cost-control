@@ -12,12 +12,6 @@ function Submit(){const {pending}=useFormStatus();return <button disabled={pendi
 
 export default function SupplierPaymentForm({options,action}:{options:Option[];action:(fd:FormData)=>Promise<Result>}){
   async function formStateAction(_previousState:Result,formData:FormData):Promise<Result>{
-    const projectId=String(formData.get("project_id")??"");
-    const supplierId=String(formData.get("supplier_id")??"");
-    const amount=Number(formData.get("amount")??0);
-    const option=options.find(o=>o.project_id===projectId&&o.supplier_id===supplierId);
-    if(option&&amount>option.balance+0.000001)return {ok:false,error:`Payment cannot exceed the outstanding balance (${pkr(option.balance)}).`};
-    if(option&&!window.confirm(`Record a payment of ${pkr(amount)} to ${option.supplier_name} for ${option.project_label}?`))return {ok:false};
     try{return await action(formData)}catch{return {ok:false,error:"Could not record the payment. Your entries have been kept so you can try again."}}
   }
   const [state,formAction]=useFormState(formStateAction,initial); const ref=useRef<HTMLFormElement>(null);
@@ -27,7 +21,20 @@ export default function SupplierPaymentForm({options,action}:{options:Option[];a
   const selected=options.find(o=>o.project_id===project&&o.supplier_id===supplier);
   const today=new Date().toISOString().slice(0,10);
   useEffect(()=>{if(state.ok){ref.current?.reset();const ids=Array.from(new Set(options.map(o=>o.project_id)));setProject(ids.length===1?ids[0]:"");setSupplier("");}},[state,options]);
-  return <form ref={ref} action={formAction} className="min-w-0 space-y-4 rounded-xl border bg-white p-4">
+  function confirmSubmit(event:React.FormEvent<HTMLFormElement>){
+    const fd=new FormData(event.currentTarget);
+    const amount=Number(fd.get("amount")??0);
+    if(selected&&amount>selected.balance+0.000001){
+      event.preventDefault();
+      window.alert(`Payment cannot exceed the outstanding balance (${pkr(selected.balance)}).`);
+      return;
+    }
+    if(selected&&!window.confirm(`Record a payment of ${pkr(amount)} to ${selected.supplier_name} for ${selected.project_label}?`)){
+      event.preventDefault();
+    }
+  }
+
+  return <form ref={ref} action={formAction} onSubmit={confirmSubmit} className="min-w-0 space-y-4 rounded-xl border bg-white p-4">
     <div><h2 className="font-semibold">Record supplier payment</h2><p className="text-sm text-slate-600">Only suppliers with an outstanding balance are available.</p></div>
     {state.ok&&<FormStatusMessage kind="success">Payment recorded successfully.</FormStatusMessage>}
     {state.error&&<FormStatusMessage kind="error">{state.error}</FormStatusMessage>}
