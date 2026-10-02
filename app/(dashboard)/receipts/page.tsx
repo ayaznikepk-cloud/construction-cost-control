@@ -4,6 +4,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { pkr } from "@/lib/format";
+import ReceiptEntryForm from "@/components/receipts/ReceiptEntryForm";
 
 const textValue = (f: FormData, n: string) => {
   const v = String(f.get(n) ?? "").trim();
@@ -15,11 +16,13 @@ const numberValue = (f: FormData, n: string) => {
   return raw && Number.isFinite(v) ? v : null;
 };
 
-async function recordReceipt(formData: FormData) {
+type ReceiptState = { error: string | null; success: string | null };
+
+async function recordReceipt(_state: ReceiptState, formData: FormData): Promise<ReceiptState> {
   "use server";
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Sign in required.");
+  if (!user) return { error: "Your session has expired. Please sign in again.", success: null };
 
   const projectId = textValue(formData, "project_id");
   const billId = textValue(formData, "ra_bill_id");
@@ -30,10 +33,10 @@ async function recordReceipt(formData: FormData) {
   const amount = numberValue(formData, "amount_received");
   const attachment = formData.get("payment_advice");
   const file = attachment instanceof File && attachment.size > 0 ? attachment : null;
-  if (file && !["application/pdf", "image/jpeg", "image/png"].includes(file.type)) throw new Error("Attachment must be PDF, JPG or PNG.");
-  if (file && file.size > 10 * 1024 * 1024) throw new Error("Attachment must be 10 MB or smaller.");
+  if (file && !["application/pdf", "image/jpeg", "image/png"].includes(file.type)) return { error: "Attachment must be PDF, JPG or PNG.", success: null };
+  if (file && file.size > 10 * 1024 * 1024) return { error: "Attachment must be 10 MB or smaller.", success: null };
   if (!projectId || !billId || !date || amount === null || amount <= 0) {
-    throw new Error("Project, RA bill, receipt date and positive amount are required.");
+    return { error: "Select an RA bill, enter the receipt date and an amount greater than zero.", success: null };
   }
 
   const { data: bill } = await supabase
@@ -44,7 +47,7 @@ async function recordReceipt(formData: FormData) {
     .maybeSingle();
 
   if (!bill || !["passed", "payment_authorized", "partially_received"].includes(bill.status)) {
-    throw new Error("Receipts can only be recorded against a passed or partially received RA bill.");
+    return { error: "This RA bill is no longer available for receipt entry. Refresh the page and try again.", success: null };
   }
 
   const { data: existing } = await supabase
@@ -55,7 +58,7 @@ async function recordReceipt(formData: FormData) {
   const received = (existing ?? []).reduce((sum, row) => sum + Number(row.amount_received ?? 0), 0);
   const net = Number(bill.net_payable ?? 0);
   if (received + amount > net + 0.000001) {
-    throw new Error("Receipt exceeds the outstanding net payable for this RA bill.");
+    return { error: "Receipt exceeds the outstanding amount for this RA bill.", success: null };
   }
 
   let attachmentId: string | null = null;
@@ -63,9 +66,9 @@ async function recordReceipt(formData: FormData) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `${user.id}/${crypto.randomUUID()}-${safeName}`;
     const { error: uploadError } = await supabase.storage.from("project-documents").upload(storagePath, file, { contentType: file.type, upsert: false });
-    if (uploadError) throw new Error("Could not upload attachment: " + uploadError.message);
+    if (uploadError) return { error: "Could not upload the attachment. Please try again.", success: null };
     const { data: savedAttachment, error: attachmentError } = await supabase.from("attachments").insert({ storage_path: storagePath, file_name: file.name, mime_type: file.type, uploaded_by: user.id }).select("id").single();
-    if (attachmentError) { await supabase.storage.from("project-documents").remove([storagePath]); throw new Error("Could not save attachment: " + attachmentError.message); }
+    if (attachmentError) { await supabase.storage.from("project-documents").remove([storagePath]); return { error: "The attachment uploaded, but could not be saved. Please try again.", success: null }; }
     attachmentId = savedAttachment.id;
   }
 
@@ -86,17 +89,18 @@ async function recordReceipt(formData: FormData) {
       if (saved?.storage_path) await supabase.storage.from("project-documents").remove([saved.storage_path]);
       await supabase.from("attachments").delete().eq("id", attachmentId);
     }
-    throw new Error("Could not record receipt: " + error.message);
+    return { error: "Could not record the receipt. Your entries have been kept so you can try again.", success: null };
   }
 
   const totalReceived = received + amount;
   const status = totalReceived + 0.000001 >= net ? "fully_received" : "partially_received";
   const { error: statusError } = await supabase.from("ra_bills").update({ status }).eq("id", billId);
-  if (statusError) throw new Error(statusError.message);
+  if (statusError) return { error: "Receipt was saved, but the RA bill status could not be refreshed. Please refresh the page.", success: null };
 
   revalidatePath("/receipts");
   revalidatePath("/projects/" + projectId + "/bills");
   revalidatePath("/dashboard");
+  return { error: null, success: "Government receipt recorded successfully." };
 }
 
 export default async function ReceiptsPage() {
@@ -149,29 +153,20 @@ export default async function ReceiptsPage() {
         {!billsError && outstanding.length === 0 ? (
           <p className="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-500">No passed RA bills currently have an outstanding balance.</p>
         ) : (
-          <form action={recordReceipt} encType="multipart/form-data" className="mt-4 grid min-w-0 gap-3 md:grid-cols-2 lg:grid-cols-3">
-            <select name="ra_bill_id" required className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm">
-              <option value="">Select passed RA bill</option>
-              {outstanding.map((bill: any) => {
-                const project = Array.isArray(bill.projects) ? bill.projects[0] : bill.projects;
-                return <option key={bill.id} value={bill.id}>{project?.project_code ?? "Project"} — RA {bill.bill_number} — {pkr(bill.outstanding)} outstanding</option>;
-              })}
-            </select>
-            <select name="project_id" required className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm">
-              <option value="">Confirm project</option>
-              {outstanding.map((bill: any) => {
-                const project = Array.isArray(bill.projects) ? bill.projects[0] : bill.projects;
-                return <option key={bill.id} value={project?.id}>{project?.project_code} — {project?.project_name}</option>;
-              })}
-            </select>
-            <input name="receipt_date" required type="date" className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm" />
-            <input name="amount_received" required type="number" min="0.01" step="0.01" placeholder="Amount received (Rs)" className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm" />
-            <input name="bank" placeholder="Bank / payment source" className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm" />
-            <input name="reference_number" placeholder="Reference / advice no." className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm" />
-            <input name="remarks" placeholder="Remarks" className="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm md:col-span-2" />
-            <label className="min-w-0 rounded-md border border-dashed border-border bg-gray-50 px-3 py-2 text-sm text-gray-600"><span className="mb-1 block text-xs font-medium text-gray-700">Payment advice / proof (optional)</span><input name="payment_advice" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="block w-full min-w-0 text-xs" /><span className="mt-1 block text-[11px] text-gray-500">PDF, JPG or PNG · max 10 MB</span></label>
-            <button className="rounded-md bg-active px-4 py-2 text-sm font-medium text-white">Record receipt</button>
-          </form>
+          <ReceiptEntryForm
+            bills={outstanding.map((bill: any) => {
+              const project = Array.isArray(bill.projects) ? bill.projects[0] : bill.projects;
+              return {
+                id: bill.id,
+                bill_number: bill.bill_number,
+                outstanding: bill.outstanding,
+                project_id: project?.id ?? "",
+                project_code: project?.project_code ?? "Project",
+                project_name: project?.project_name ?? "",
+              };
+            })}
+            action={recordReceipt}
+          />
         )}
       </section>
 

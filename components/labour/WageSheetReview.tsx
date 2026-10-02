@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { pkr, sumMoney, type ActionResult } from "@/lib/format";
+import FormStatusMessage from "@/components/shared/FormStatusMessage";
 
 type Item = {
   id: string;
@@ -55,20 +56,36 @@ export default function WageSheetReview({
     (i) => Number(edits[i.id].recovery || 0) !== Number(i.advance_recovery) || Number(edits[i.id].other || 0) !== Number(i.other_deductions)
   );
 
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!dirty || busy) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, busy]);
+
   async function run(fn: () => Promise<ActionResult>, ok: string, after?: () => void) {
     setBusy(true);
     setError(null);
     setMessage(null);
-    const result = await fn();
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
+    try {
+      const result = await fn();
+      if (!result.ok) {
+        setError(result.error);
+        return false;
+      }
+      setMessage(ok);
+      after?.();
+      router.refresh();
+      return true;
+    } catch {
+      setError("Could not complete this action. Your unsaved deductions have been kept.");
       return false;
+    } finally {
+      setBusy(false);
     }
-    setMessage(ok);
-    after?.();
-    router.refresh();
-    return true;
   }
 
   const save = () =>
@@ -82,12 +99,12 @@ export default function WageSheetReview({
 
   async function handleApprove() {
     if (dirty && !(await save())) return;
-    if (!window.confirm("Approve this wage sheet? Attendance for the period will be locked and advance recoveries booked.")) return;
+    if (!window.confirm(`Approve this wage sheet with a net payable of ${pkr(totalNet)}? Attendance for the period will be locked and advance recoveries will be booked.`)) return;
     run(() => approve(periodId), "Wage sheet approved.");
   }
 
   function handleDiscard() {
-    if (!window.confirm("Discard this draft wage sheet?")) return;
+    if (!window.confirm("Discard this draft wage sheet? This removes the draft and cannot be undone from this screen.")) return;
     run(() => discard(periodId), "Discarded.", () => router.push("/labour-payments/wage-sheets"));
   }
 
@@ -96,8 +113,9 @@ export default function WageSheetReview({
 
   return (
     <div>
-      {error && <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>}
-      {message && !error && <div className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-positive">{message}</div>}
+      {error && <div className="mb-4"><FormStatusMessage kind="error">{error}</FormStatusMessage></div>}
+      {message && !error && <div className="mb-4"><FormStatusMessage kind="success">{message}</FormStatusMessage></div>}
+      {dirty && isDraft && !busy && <div className="mb-4"><FormStatusMessage kind="info">You have unsaved deduction changes.</FormStatusMessage></div>}
 
       <div className="overflow-x-auto rounded-lg border border-border bg-white">
         <table className="w-full text-sm">
@@ -173,13 +191,13 @@ export default function WageSheetReview({
       {isDraft && (
         <div className="mt-4 flex flex-wrap gap-3">
           <button onClick={save} disabled={busy || !dirty} className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50">
-            Save deductions
+            {busy ? "Saving..." : "Save deductions"}
           </button>
           <button onClick={handleApprove} disabled={busy} className="rounded-md bg-positive px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
-            Approve wage sheet
+            {busy ? "Working..." : "Approve wage sheet"}
           </button>
           <button onClick={handleDiscard} disabled={busy} className="rounded-md px-4 py-2 text-sm font-medium text-danger hover:bg-red-50 disabled:opacity-50">
-            Discard draft
+            {busy ? "Working..." : "Discard draft"}
           </button>
         </div>
       )}
