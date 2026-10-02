@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionResult } from "@/lib/format";
+import { pkr } from "@/lib/format";
+import FormStatusMessage from "@/components/shared/FormStatusMessage";
 
 type WorkerOption = { id: string; name: string; worker_code: string };
 
@@ -24,30 +26,51 @@ function LedgerForm({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  const [workerId, setWorkerId] = useState("");
   const today = new Date().toISOString().slice(0, 10);
 
   async function handleAction(formData: FormData) {
+    const amount = Number(formData.get("amount") ?? 0);
+    const worker = workers.find((w) => w.id === workerId);
+    if (!worker) {
+      setError("Select a worker before saving.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+
+    const description = title === "Give advance" ? "advance" : "wage payment";
+    if (!window.confirm(`Record ${description} of ${pkr(amount)} for ${worker.name} (${worker.worker_code})?`)) return;
+
     setPending(true);
     setError(null);
     setDone(false);
-    const result = await action(formData);
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await action(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      formRef.current?.reset();
+      setWorkerId("");
+      setDone(true);
+      router.refresh();
+    } catch {
+      setError("Could not save this transaction. Your entries have been kept so you can try again.");
+    } finally {
+      setPending(false);
     }
-    formRef.current?.reset();
-    setDone(true);
-    router.refresh();
   }
 
   return (
     <form ref={formRef} action={handleAction} className="rounded-lg border border-border bg-white p-4">
       <div className="mb-3 text-sm font-medium">{title}</div>
-      {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>}
-      {done && !error && <div className="mb-3 rounded-md bg-green-50 px-3 py-2 text-sm text-positive">Saved.</div>}
+      {error && <div className="mb-3"><FormStatusMessage kind="error">{error}</FormStatusMessage></div>}
+      {done && !error && <div className="mb-3"><FormStatusMessage kind="success">Transaction saved successfully.</FormStatusMessage></div>}
       <div className="grid grid-cols-2 gap-2">
-        <select name="worker_id" required className="col-span-2 rounded-md border border-border px-3 py-2 text-sm">
+        <select name="worker_id" required value={workerId} onChange={(e)=>setWorkerId(e.target.value)} className="col-span-2 rounded-md border border-border px-3 py-2 text-sm">
           <option value="">Select worker</option>
           {workers.map((w) => (
             <option key={w.id} value={w.id}>
@@ -83,8 +106,9 @@ function LedgerForm({
         disabled={pending}
         className="mt-2 w-full rounded-md bg-active px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? "Saving..." : buttonLabel}
+        {pending ? "Saving transaction..." : buttonLabel}
       </button>
+      <p className="mt-2 text-center text-[11px] text-gray-500">You will be asked to confirm the worker and amount before saving.</p>
     </form>
   );
 }
