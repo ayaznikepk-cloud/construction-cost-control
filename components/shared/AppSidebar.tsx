@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Menu, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const sections = [
   { label: "PROJECTS", links: [
@@ -29,6 +30,47 @@ const sections = [
     { href: "/setup/settings", label: "Settings" },
   ]},
 ];
+
+function SignOutButton({ close }: { close?: () => void }) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    if (signingOut) return;
+
+    setSigningOut(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error("Sign out failed:", error);
+        setSigningOut(false);
+        return;
+      }
+
+      close?.();
+      router.replace("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      setSigningOut(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleSignOut}
+      disabled={signingOut}
+      className="mx-3 mb-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-300 hover:bg-navyLight hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <LogOut size={16} />
+      {signingOut ? "Signing out..." : "Sign out"}
+    </button>
+  );
+}
 
 function Navigation({ close }: { close?: () => void }) {
   return <>
@@ -58,6 +100,7 @@ export default function AppSidebar() {
     <aside className="hidden w-64 flex-shrink-0 bg-navy text-gray-300 lg:flex lg:flex-col">
       <div className="px-5 py-5 text-sm font-semibold text-white">Construction Cost Control</div>
       <Navigation />
+      <SignOutButton />
     </aside>
 
     <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
@@ -75,6 +118,7 @@ export default function AppSidebar() {
             className="rounded-md p-2 text-gray-300 hover:bg-navyLight hover:text-white"><X size={20} /></button>
         </div>
         <Navigation close={() => setOpen(false)} />
+        <SignOutButton close={() => setOpen(false)} />
       </aside>
     </div>}
   </>;
