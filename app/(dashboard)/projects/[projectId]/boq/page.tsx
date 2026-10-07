@@ -282,3 +282,6 @@ function BoqRow({item,executed,variation,projectId,allLocked}:{item:BoqItem;exec
   </tr>;
 }
 
+function ChangeRegister({title,empty,rows,projectId,action}:{title:string;empty:string;projectId:string;action:(formData:FormData)=>Promise<void>;rows:{id:string;kind:"variation"|"extra";name:string;detail:string;status:string;reference?:string|null;date?:string|null;proposedQuantity?:number|null;proposedRate?:number|null}[]}) {
+ return <div className="overflow-hidden rounded-xl border border-border bg-white"><div className="border-b border-border px-4 py-3 font-medium">{title}</div>{!rows.length?<div className="px-4 py-8 text-sm text-gray-500">{empty}</div>:<div className="divide-y divide-border">{rows.map(r=><div key={r.id} className="px-4 py-3"><div className="flex items-start justify-between gap-3"><div className="font-medium text-gray-900">{r.name}</div><span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-medium uppercase text-gray-600">{r.status}</span></div><div className="mt-1 text-sm text-gray-600">{r.detail}</div>{(r.reference||r.date)&&<div className="mt-1 text-xs text-gray-500">{r.reference||"No reference"}{r.date?` · ${r.date}`:""}</div>}{r.status==="submitted"&&<ApprovalForm kind={r.kind} id={r.id} projectId={projectId} proposedQuantity={r.proposedQuantity} proposedRate={r.proposedRate} action={action}/>}</div>)}</div>}</div>
+}
