@@ -278,7 +278,7 @@ function BoqRow({item,executed,variation,projectId,allLocked}:{item:BoqItem;exec
     <td className="px-4 py-3 text-right tabular-nums">{Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{pkr(amount)}</td>
     <td className="px-4 py-3 text-right tabular-nums">{variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{revised.toLocaleString()}</td>
     <td className="px-4 py-3 text-right tabular-nums">{executed.toLocaleString()}</td>
-    {!allLocked&&<td className="whitespace-nowrap px-4 py-3"><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><button className="font-medium text-red-600 hover:underline">Delete</button></form></td>}
+    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><button className="font-medium text-red-600 hover:underline">Delete</button></form></>}</td>}
   </tr>;
 }
 
