@@ -78,6 +78,33 @@ async function addItem(formData: FormData) {
   revalidatePath(`/projects/${projectId}/boq`);
 }
 
+async function updateItem(formData: FormData) {
+  "use server";
+  const supabase = createClient(); const user = await currentUser(supabase);
+  const projectId=textValue(formData,"project_id"), itemId=textValue(formData,"item_id");
+  const sectionId=textValue(formData,"section_id"), parentId=textValue(formData,"parent_boq_item_id");
+  const boqNumber=textValue(formData,"boq_number"), description=textValue(formData,"description"), unitId=textValue(formData,"unit_id");
+  const quantity=numberValue(formData,"original_quantity"), mrsRate=numberValue(formData,"mrs_rate"), contractRate=numberValue(formData,"contract_rate"), sortOrder=numberValue(formData,"sort_order")??0;
+  if(!projectId||!itemId||!boqNumber||!description||!unitId) throw new Error("BOQ number, description and unit are required.");
+  if(quantity===null||quantity<0||contractRate===null||contractRate<0||(mrsRate!==null&&mrsRate<0)) throw new Error("Quantity and rates must be zero or greater.");
+  const {data:existing}=await supabase.from("boq_items").select("id,is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle();
+  if(!existing) throw new Error("BOQ item was not found."); if(existing.is_locked) throw new Error("Locked BOQ items cannot be edited.");
+  if(parentId===itemId) throw new Error("A BOQ item cannot be its own parent.");
+  const {data:unit}=await supabase.from("units").select("code").eq("id",unitId).maybeSingle(); if(!unit) throw new Error("Selected unit was not found.");
+  if(sectionId){const {data:s}=await supabase.from("boq_sections").select("id").eq("id",sectionId).eq("project_id",projectId).maybeSingle();if(!s)throw new Error("Selected BOQ section does not belong to this project.");}
+  if(parentId){const {data:p}=await supabase.from("boq_items").select("id").eq("id",parentId).eq("project_id",projectId).maybeSingle();if(!p)throw new Error("Selected parent item does not belong to this project.");}
+  const {error}=await supabase.from("boq_items").update({section_id:sectionId,parent_boq_item_id:parentId,boq_number:boqNumber,description,unit_id:unitId,original_quantity:quantity,mrs_rate:mrsRate,contract_rate:contractRate,rate_basis:unit.code.startsWith("%")?100:1,sort_order:sortOrder,updated_by:user.id}).eq("id",itemId).eq("project_id",projectId).eq("is_locked",false);
+  if(error) throw new Error(`Could not update BOQ item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
+}
+async function deleteItem(formData: FormData) {
+  "use server";
+  const supabase=createClient(); await currentUser(supabase); const projectId=textValue(formData,"project_id"),itemId=textValue(formData,"item_id");
+  if(!projectId||!itemId) throw new Error("Project and BOQ item are required.");
+  const {data:item}=await supabase.from("boq_items").select("is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle(); if(!item) throw new Error("BOQ item was not found."); if(item.is_locked) throw new Error("Locked BOQ items cannot be deleted.");
+  const {error}=await supabase.from("boq_items").delete().eq("id",itemId).eq("project_id",projectId).eq("is_locked",false); if(error) throw new Error(`Could not delete BOQ item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
+}
+
+
 
 async function addVariation(formData: FormData) {
   "use server";
@@ -151,10 +178,10 @@ type BoqItem = {
   id: string; section_id: string | null; parent_boq_item_id: string | null; boq_number: string;
   description: string; original_quantity: number; mrs_rate: number | null; contract_rate: number;
   rate_basis: number; original_mrs_amount: number | null; original_contract_amount: number | null;
-  sort_order: number; is_locked: boolean; units: { code: string } | { code: string }[] | null;
+  sort_order: number; is_locked: boolean; unit_id: string | null; units: { code: string } | { code: string }[] | null;
 };
 
-export default async function BoqPage({ params }: { params: { projectId: string } }) {
+export default async function BoqPage({ params, searchParams }: { params: { projectId: string }; searchParams?: { edit?: string } }) {
   const supabase = createClient();
   const [
     { data: project }, { data: sections, error: sectionError }, { data: rawItems, error: itemError },
@@ -181,6 +208,7 @@ export default async function BoqPage({ params }: { params: { projectId: string 
   const approvedExtraValue = (extraItems ?? []).filter((e) => e.status === "approved").reduce((sum, e) => sum + Number(e.quantity) * Number(e.approved_rate ?? 0), 0);
   const revisedBoqValue = originalBoqValue + approvedVariationValue + approvedExtraValue;
   const allLocked = items.length > 0 && items.every((i) => i.is_locked);
+  const editingItem = !allLocked && searchParams?.edit ? items.find((i) => i.id === searchParams.edit && !i.is_locked) ?? null : null;
 
   const grouped = (sections ?? []).map((section) => ({ section, items: items.filter((i) => i.section_id === section.id) }));
   const ungrouped = items.filter((i) => !i.section_id);
@@ -204,7 +232,7 @@ export default async function BoqPage({ params }: { params: { projectId: string 
         <Metric label="Revised BOQ Value" value={revisedBoqValue} />
       </div>
 
-      {!allLocked && <div className="grid gap-4 md:grid-cols-2"><AddSectionForm projectId={params.projectId} action={addSection}/><AddItemForm projectId={params.projectId} sections={sections ?? []} items={items.map(i=>({id:i.id,boq_number:i.boq_number,description:i.description}))} units={units ?? []} action={addItem}/></div>}
+      {!allLocked && <div className="grid gap-4 md:grid-cols-2"><AddSectionForm projectId={params.projectId} action={addSection}/><AddItemForm key={editingItem?.id ?? "new"} projectId={params.projectId} sections={sections ?? []} items={items.filter(i=>i.id!==editingItem?.id).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description}))} units={units ?? []} action={editingItem?updateItem:addItem} editingItem={editingItem}/></div>}
       {allLocked && <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">The original BOQ is locked. Quantity changes are recorded as variations, and non-BOQ work as extra items.</div>}
       {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
       {allLocked && <div className="grid gap-4 xl:grid-cols-2">
@@ -220,12 +248,12 @@ export default async function BoqPage({ params }: { params: { projectId: string 
               <th className="px-4 py-3 text-right font-medium">Original Qty</th><th className="px-4 py-3 font-medium">Unit</th>
               <th className="px-4 py-3 text-right font-medium">MRS Rate</th><th className="px-4 py-3 text-right font-medium">Contract Rate</th>
               <th className="px-4 py-3 text-right font-medium">Original Amount</th><th className="px-4 py-3 text-right font-medium">Approved Var.</th>
-              <th className="px-4 py-3 text-right font-medium">Revised Qty</th><th className="px-4 py-3 text-right font-medium">Executed</th>
+              <th className="px-4 py-3 text-right font-medium">Revised Qty</th><th className="px-4 py-3 text-right font-medium">Executed</th>{!allLocked&&<th className="px-4 py-3 font-medium">Actions</th>}
             </tr></thead>
             <tbody>
-              {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem}/>)}
-              {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0}/>)}
-              {!items.length && <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-500">No BOQ items yet. Add sections and original BOQ items above.</td></tr>}
+              {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem} projectId={params.projectId} allLocked={allLocked}/>)}
+              {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0} projectId={params.projectId} allLocked={allLocked}/>)}
+              {!items.length && <tr><td colSpan={allLocked?10:11} className="px-4 py-10 text-center text-gray-500">No BOQ items yet. Add sections and original BOQ items above.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -235,10 +263,10 @@ export default async function BoqPage({ params }: { params: { projectId: string 
 }
 
 function Metric({label,value,text}:{label:string;value?:number;text?:string}) { return <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-lg font-semibold">{text ?? pkr(value ?? 0)}</div></div>; }
-function SectionRows({name,items,executed,variations}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>}) {
-  return <><tr className="bg-gray-50"><td colSpan={10} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0}/>)}</>;
+function SectionRows({name,items,executed,variations,projectId,allLocked}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>;projectId:string;allLocked:boolean}) {
+  return <><tr className="bg-gray-50"><td colSpan={allLocked?10:11} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0} projectId={projectId} allLocked={allLocked}/>)}</>;
 }
-function BoqRow({item,executed,variation}:{item:BoqItem;executed:number;variation:number}) {
+function BoqRow({item,executed,variation,projectId,allLocked}:{item:BoqItem;executed:number;variation:number;projectId:string;allLocked:boolean}) {
   const unit = Array.isArray(item.units) ? item.units[0]?.code : item.units?.code;
   const revised = Number(item.original_quantity)+variation;
   const amount = Number(item.original_contract_amount ?? (Number(item.original_quantity) * Number(item.contract_rate) / Number(item.rate_basis || 1)));
@@ -250,6 +278,7 @@ function BoqRow({item,executed,variation}:{item:BoqItem;executed:number;variatio
     <td className="px-4 py-3 text-right tabular-nums">{Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{pkr(amount)}</td>
     <td className="px-4 py-3 text-right tabular-nums">{variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{revised.toLocaleString()}</td>
     <td className="px-4 py-3 text-right tabular-nums">{executed.toLocaleString()}</td>
+    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><button className="font-medium text-red-600 hover:underline">Delete</button></form></>}</td>}
   </tr>;
 }
 
