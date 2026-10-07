@@ -207,7 +207,8 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
   const approvedVariationValue = items.reduce((sum, i) => sum + (approvedVariationByItem.get(i.id) ?? 0) * Number(i.contract_rate) / Number(i.rate_basis || 1), 0);
   const approvedExtraValue = (extraItems ?? []).filter((e) => e.status === "approved").reduce((sum, e) => sum + Number(e.quantity) * Number(e.approved_rate ?? 0), 0);
   const revisedBoqValue = originalBoqValue + approvedVariationValue + approvedExtraValue;
-  const allLocked = items.length > 0 && items.every((i) => i.is_locked);\n  const editingItem = !allLocked && searchParams?.edit ? items.find((i) => i.id === searchParams.edit && !i.is_locked) ?? null : null;
+  const allLocked = items.length > 0 && items.every((i) => i.is_locked);
+  const editingItem = !allLocked && searchParams?.edit ? items.find((i) => i.id === searchParams.edit && !i.is_locked) ?? null : null;
 
   const grouped = (sections ?? []).map((section) => ({ section, items: items.filter((i) => i.section_id === section.id) }));
   const ungrouped = items.filter((i) => !i.section_id);
