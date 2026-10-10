@@ -92,6 +92,7 @@ export default async function WageSheetDetailPage({ params }: { params: { id: st
         <h2 className="text-base font-semibold">
           {projectName}: {fmtDate(period.period_start)} to {fmtDate(period.period_end)}
         </h2>
+        <Link href={`/print/wage-sheets/${period.id}`} className="ml-auto rounded border px-3 py-2 text-sm font-medium hover:bg-gray-50">Print wage sheet / PDF</Link>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
             period.status === "approved" ? "bg-green-50 text-positive" : "bg-amber-50 text-warning"
