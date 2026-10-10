@@ -45,3 +45,16 @@ body {
   .print-table tfoot { display: table-footer-group; }
   .print-table tr { break-inside: avoid; }
 }
+
+/* Small-screen report previews: printed output remains full-width A4. */
+@media screen and (max-width: 639px) {
+  .print-document { padding: 1rem; min-width: 0; max-width: 100%; }
+  .print-document form.no-print { display: flex; flex-direction: column; align-items: stretch; }
+  .print-document form.no-print label, .print-document form.no-print input, .print-document form.no-print select, .print-document form.no-print button { width: 100%; }
+  .print-table-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .print-table-scroll .print-table { min-width: 680px; }
+}
+@media print {
+  .print-table-scroll { overflow: visible !important; }
+  .print-table-scroll .print-table { min-width: 0 !important; }
+}

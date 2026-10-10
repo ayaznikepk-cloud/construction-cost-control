@@ -42,10 +42,10 @@ export default async function ProgressPrint({ params, searchParams }: { params: 
     </form>
     {errorMessage ? <p role="alert">Unable to load complete register: {errorMessage}</p> : <>
       <p className="mb-3 text-sm">{rows.length} records · Total value: <strong>{pkr(total)}</strong></p>
-      <table className="print-table w-full text-left text-xs"><thead><tr><th>Date</th><th>BOQ #</th><th>Description / Location</th><th className="text-right">Quantity</th><th>Unit</th><th className="text-right">Value</th></tr></thead>
+      <div className="print-table-scroll"><table className="print-table w-full text-left text-xs"><thead><tr><th>Date</th><th>BOQ #</th><th>Description / Location</th><th className="text-right">Quantity</th><th>Unit</th><th className="text-right">Value</th></tr></thead>
         <tbody>{rows.map(r => { const b = boq(r); const u = Array.isArray(b?.units) ? b.units[0]?.code : b?.units?.code; return <tr key={r.id}><td>{r[dateColumn]}</td><td>{b?.boq_number ?? "—"}</td><td>{b?.description ?? "—"}{measured && r.location && <div className="text-gray-500">{r.location}</div>}</td><td className="text-right">{qty(r).toLocaleString("en-PK")}</td><td>{u ?? "—"}</td><td className="text-right">{pkr(value(r))}</td></tr>; })}</tbody>
         <tfoot><tr><th colSpan={5}>Total</th><th className="text-right">{pkr(total)}</th></tr></tfoot>
-      </table>
+      </table></div>
       <p className="mt-3 text-xs text-gray-500">{measured ? "Measurement and certification remain separate from billing." : "Executed quantities are not automatically certified or billed."}</p>
     </>}
   </PrintDocument>;
