@@ -28,3 +28,33 @@ body {
     text-overflow: ellipsis;
   }
 }
+
+/* Shared printable document styles */
+.print-document { background: white; padding: 1.5rem; color: #111827; }
+.print-table { border-collapse: collapse; }
+.print-table th, .print-table td { border: 1px solid #d1d5db; padding: .5rem; vertical-align: top; }
+.print-table thead, .print-table tfoot { background: #f3f4f6; }
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  body { background: white !important; }
+  aside, header, nav, .no-print, .print-actions { display: none !important; }
+  main { padding: 0 !important; overflow: visible !important; }
+  .print-document { padding: 0; }
+  .print-table { width: 100%; }
+  .print-table thead { display: table-header-group; }
+  .print-table tfoot { display: table-footer-group; }
+  .print-table tr { break-inside: avoid; }
+}
+
+/* Small-screen report previews: printed output remains full-width A4. */
+@media screen and (max-width: 639px) {
+  .print-document { padding: 1rem; min-width: 0; max-width: 100%; }
+  .print-document form.no-print { display: flex; flex-direction: column; align-items: stretch; }
+  .print-document form.no-print label, .print-document form.no-print input, .print-document form.no-print select, .print-document form.no-print button { width: 100%; }
+  .print-table-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .print-table-scroll .print-table { min-width: 680px; }
+}
+@media print {
+  .print-table-scroll { overflow: visible !important; }
+  .print-table-scroll .print-table { min-width: 0 !important; }
+}

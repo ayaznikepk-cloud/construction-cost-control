@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ExpenseEntryForm from "@/components/expenses/ExpenseEntryForm";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +48,7 @@ export default async function ExpensesPage(){
  const total=(expenses??[]).reduce((s:any,e:any)=>s+Number(e.amount??0),0);
  const direct=(expenses??[]).filter((e:any)=>e.classification==="direct_boq").reduce((s:any,e:any)=>s+Number(e.amount??0),0);
  const overhead=total-direct;
- return <div className="min-w-0 space-y-6"><div><h1 className="text-xl font-semibold">Expenses</h1><p className="text-sm text-gray-500">Record direct BOQ costs separately from project overhead.</p></div>
+ return <div className="min-w-0 space-y-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-semibold">Expenses</h1><p className="text-sm text-gray-500">Record direct BOQ costs separately from project overhead.</p></div><Link href="/print/expenses" className="rounded border px-3 py-2 text-sm font-medium">Print expense register / PDF</Link></div>
  <div className="grid gap-3 md:grid-cols-3"><Metric label="Total expenses" value={pkr(total)}/><Metric label="Direct BOQ cost" value={pkr(direct)}/><Metric label="Project overhead" value={pkr(overhead)}/></div>
  <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
   <ExpenseEntryForm projects={(projects??[]) as any} categories={(categories??[]) as any} action={createExpense}/>
