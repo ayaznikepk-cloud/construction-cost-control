@@ -25,7 +25,7 @@ export default async function ReportsPage(){
   const boqCost=(boq??[]).reduce((n:any,x:any)=>n+Number(x.material_cost??0)+Number(x.direct_labour_cost??0)+Number(x.labour_contractor_cost??0)+Number(x.machinery_cost??0)+Number(x.direct_expense_cost??0),0);
 
   return <div className="min-w-0 space-y-6">
-    <div><h1 className="text-xl font-semibold">Reports</h1><p className="mt-1 text-sm text-gray-500">Project cost, progress, receivable and payable control summaries derived from posted project transactions.</p></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-semibold">Reports</h1><p className="mt-1 text-sm text-gray-500">Project cost, progress, receivable and payable control summaries derived from posted project transactions.</p></div><a href="/print/financial" className="rounded border px-3 py-2 text-sm font-medium hover:bg-gray-50">Print financial summary / PDF</a></div>
     {error&&<div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Could not load project reports: {error.message}</div>}
 
     <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
