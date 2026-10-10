@@ -101,7 +101,7 @@ export default async function ProjectsPage() {
           <h1 className="text-xl font-semibold text-gray-900">Projects</h1>
           <p className="mt-1 text-sm text-gray-500">Government works, contract values and project status.</p>
         </div>
-        <AddProjectForm action={createProject} />
+        <div className="flex items-center gap-2"><Link href="/print/projects" className="rounded border px-3 py-2 text-sm font-medium hover:bg-gray-50">Print register / PDF</Link><AddProjectForm action={createProject} /></div>
       </div>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error.message}</div>}
