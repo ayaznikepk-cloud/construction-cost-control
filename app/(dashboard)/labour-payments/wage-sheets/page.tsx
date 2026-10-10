@@ -36,6 +36,7 @@ export default async function WageSheetsPage() {
 
   return (
     <div>
+      <div className="mb-4 flex justify-end"><Link href="/print/wage-sheets" className="rounded border px-3 py-2 text-sm font-medium hover:bg-gray-50">Print wage sheet register / PDF</Link></div>
       <GenerateWageSheetForm projects={projects ?? []} action={generateSheet} />
 
       <div className="rounded-lg border border-border bg-white">
@@ -47,12 +48,13 @@ export default async function WageSheetsPage() {
               <th className="px-4 py-2 text-right font-medium">Gross</th>
               <th className="px-4 py-2 text-right font-medium">Net Payable</th>
               <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2 text-right font-medium">Print</th>
             </tr>
           </thead>
           <tbody>
             {error && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-sm text-danger">
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-danger">
                   Could not load wage sheets: {error.message}
                 </td>
               </tr>
@@ -74,6 +76,7 @@ export default async function WageSheetsPage() {
                       {p.status}
                     </span>
                   </td>
+                  <td className="px-4 py-2 text-right"><Link href={`/print/wage-sheets/${p.id}`} className="text-active hover:underline">Print / PDF</Link></td>
                 </tr>
               );
             })}
