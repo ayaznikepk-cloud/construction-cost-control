@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import LedgerForms from "@/components/labour/LedgerForms";
 import { pkr, sumMoney, type ActionResult } from "@/lib/format";
 
@@ -45,6 +46,7 @@ export default async function WorkerLedgerPage() {
 
   return (
     <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">Labour Payments</h1><Link href="/print/labour-payments" className="rounded border px-3 py-2 text-sm font-medium">Print labour ledger / PDF</Link></div>
       <div className="mb-6 grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-border bg-white p-4">
           <div className="text-xs text-gray-500">Wages Payable (approved sheets)</div>
