@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import AttendanceForm from "@/components/labour/AttendanceForm";
 
 async function saveAttendance(formData: FormData) {
@@ -104,7 +105,7 @@ export default async function AttendancePage({
 
   return (
     <div>
-      <h1 className="mb-6 text-lg font-semibold">Labour Attendance</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><h1 className="text-lg font-semibold">Labour Attendance</h1>{projectId && <Link href={`/print/attendance?project=${encodeURIComponent(projectId)}&date=${encodeURIComponent(date)}`} className="rounded border px-3 py-2 text-sm font-medium">Print attendance / PDF</Link>}</div>
 
       <form method="GET" className="mb-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3">
         <select
