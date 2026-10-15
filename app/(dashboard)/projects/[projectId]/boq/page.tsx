@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import AddSectionForm from "@/components/boq/AddSectionForm";
 import AddItemForm from "@/components/boq/AddItemForm";
+import ConfirmBoqDeleteButton from "@/components/boq/ConfirmBoqDeleteButton";
 import { VariationForm, ExtraItemForm, ApprovalForm } from "@/components/boq/VariationExtraForms";
 import { pkr } from "@/lib/format";
 
@@ -287,7 +288,7 @@ function BoqRow({item,executed,variation,projectId,allLocked,childTotal}:{item:B
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? (childTotal == null ? "—" : pkr(childTotal)) : pkr(amount)}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : revised.toLocaleString()}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : executed.toLocaleString()}</td>
-    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><button className="font-medium text-red-600 hover:underline">Delete</button></form></>}</td>}
+    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><ConfirmBoqDeleteButton boqNumber={item.boq_number} description={item.description}/></form></>}</td>}
   </tr>;
 }
 
