@@ -1,7 +1,7 @@
 "use client";
 import {useState} from "react";
 import FormStatusMessage from "@/components/shared/FormStatusMessage";
-type Action=(fd:FormData)=>Promise<void | {error?:string;success?:boolean}>;
+type Action=(fd:FormData)=>Promise<void>;
 const cls="min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm";
 
 function F({action,children,confirmMessage,successMessage}:{action:Action;children:(pending:boolean)=>React.ReactNode;confirmMessage?:string;successMessage?:string}){
@@ -9,17 +9,17 @@ function F({action,children,confirmMessage,successMessage}:{action:Action;childr
  async function run(fd:FormData){
   if(confirmMessage&&!window.confirm(confirmMessage))return;
   setP(true);setE(null);setOk(null);
-  try{const result=await action(fd);if(result&&result.error){setE(result.error);return;}if(successMessage)setOk(successMessage)}
+  try{await action(fd);if(successMessage)setOk(successMessage)}
   catch(x:any){setE(x?.message??"Could not complete this action. Please try again.")}
   finally{setP(false)}
  }
  return <form action={run}>{e&&<div className="mb-3"><FormStatusMessage kind="error">{e}</FormStatusMessage></div>}{ok&&<div className="mb-3"><FormStatusMessage kind="success">{ok}</FormStatusMessage></div>}<fieldset disabled={p}>{children(p)}</fieldset></form>
 }
 
-export function SubmitBill({projectId,billId,action,hasItems=true}:{projectId:string;billId:string;action:Action;hasItems?:boolean}){
+export function SubmitBill({projectId,billId,action}:{projectId:string;billId:string;action:Action}){
  const today=new Date().toISOString().slice(0,10);
- return <F action={action} confirmMessage={hasItems?"Submit this RA bill for checking? You will no longer be able to add or change claim items while it is under checking.":undefined} successMessage="RA bill submitted successfully.">
-  {p=><>{!hasItems&&<p className="mt-3 text-sm text-amber-700">Please add at least one claim item before submitting the RA bill.</p>}<input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="ra_bill_id" value={billId}/><div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><input name="submission_date" type="date" required defaultValue={today} className={cls}/><button disabled={!hasItems||p} className="rounded-md bg-active px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">{p?"Submitting...":"Submit RA bill"}</button></div></>}
+ return <F action={action} confirmMessage="Submit this RA bill for checking? You will no longer be able to add or change claim items while it is under checking." successMessage="RA bill submitted successfully.">
+  {p=><><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="ra_bill_id" value={billId}/><div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><input name="submission_date" type="date" required defaultValue={today} className={cls}/><button className="rounded-md bg-active px-4 py-2 text-sm font-medium text-white">{p?"Submitting...":"Submit RA bill"}</button></div></>}
  </F>
 }
 
