@@ -266,13 +266,13 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
               <th className="px-4 py-3 font-medium">BOQ #</th><th className="px-4 py-3 font-medium">Full Description</th>
               <th className="px-4 py-3 text-right font-medium">Original Qty</th><th className="px-4 py-3 font-medium">Unit</th>
               <th className="px-4 py-3 text-right font-medium">MRS Rate</th><th className="px-4 py-3 text-right font-medium">Contract Rate</th>
-              <th className="px-4 py-3 text-right font-medium">Original Amount</th><th className="px-4 py-3 text-right font-medium">Approved Var.</th>
+              <th className="px-4 py-3 text-right font-medium">Original MRS Amount</th><th className="px-4 py-3 text-right font-medium">Original Amount</th><th className="px-4 py-3 text-right font-medium">Approved Var.</th>
               <th className="px-4 py-3 text-right font-medium">Revised Qty</th><th className="px-4 py-3 text-right font-medium">Executed</th>{!allLocked&&<th className="boq-actions px-4 py-3 font-medium">Actions</th>}
             </tr></thead>
             <tbody>
               {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem} projectId={params.projectId} allLocked={allLocked} childTotals={childTotals}/>)}
               {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0} projectId={params.projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}
-              {!items.length && <tr><td colSpan={allLocked?10:11} className="px-4 py-10 text-center text-gray-500">No BOQ items yet. Add sections and original BOQ items above.</td></tr>}
+              {!items.length && <tr><td colSpan={allLocked?11:12} className="px-4 py-10 text-center text-gray-500">No BOQ items yet. Add sections and original BOQ items above.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -291,12 +291,13 @@ function BoqRow({item,executed,variation,projectId,allLocked,childTotal}:{item:B
   const isDescription = item.unit_id == null;
   const revised = Number(item.original_quantity)+variation;
   const amount = Number(item.original_contract_amount ?? (Number(item.original_quantity) * Number(item.contract_rate) / Number(item.rate_basis || 1)));
+  const mrsAmount = item.mrs_rate == null ? null : Number(item.original_mrs_amount ?? (Number(item.original_quantity) * Number(item.mrs_rate) / Number(item.rate_basis || 1)));
   return <tr className={`border-b border-border align-top last:border-0 hover:bg-gray-50 ${isDescription ? "boq-description-row bg-slate-50 font-semibold" : ""}`}>
     <td className="whitespace-nowrap px-4 py-3 font-medium">{item.parent_boq_item_id ? "↳ " : ""}{item.boq_number}{item.is_locked && <span className="boq-locked-label ml-2 text-[10px] text-gray-400">LOCKED</span>}</td>
     <td className={`min-w-[360px] max-w-xl whitespace-normal px-4 py-3 leading-5 text-gray-700 ${item.parent_boq_item_id ? "pl-8" : ""}`}>{item.description}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.original_quantity).toLocaleString()}</td><td className="px-4 py-3">{unit ?? "—"}</td>
     <td className="px-4 py-3 text-right tabular-nums">{item.mrs_rate == null ? "—" : Number(item.mrs_rate).toLocaleString()}</td>
-    <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? (childTotal == null ? "—" : pkr(childTotal)) : pkr(amount)}</td>
+    <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription || mrsAmount == null ? "—" : pkr(mrsAmount)}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? (childTotal == null ? "—" : pkr(childTotal)) : pkr(amount)}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : revised.toLocaleString()}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : executed.toLocaleString()}</td>
     {!allLocked&&<td className="boq-actions whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><ConfirmBoqDeleteButton boqNumber={item.boq_number} description={item.description}/></form></>}</td>}
