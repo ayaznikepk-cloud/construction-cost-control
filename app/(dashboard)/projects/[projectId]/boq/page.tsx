@@ -256,7 +256,7 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
             </tr></thead>
             <tbody>
               {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem} projectId={params.projectId} allLocked={allLocked} childTotals={childTotals}/>)}
-              {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0} projectId={params.projectId} allLocked={allLocked}/>)}
+              {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0} projectId={params.projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}
               {!items.length && <tr><td colSpan={allLocked?10:11} className="px-4 py-10 text-center text-gray-500">No BOQ items yet. Add sections and original BOQ items above.</td></tr>}
             </tbody>
           </table>
@@ -267,10 +267,10 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
 }
 
 function Metric({label,value,text}:{label:string;value?:number;text?:string}) { return <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-lg font-semibold">{text ?? pkr(value ?? 0)}</div></div>; }
-function SectionRows({name,items,executed,variations,projectId,allLocked}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>;projectId:string;allLocked:boolean}) {
+function SectionRows({name,items,executed,variations,projectId,allLocked,childTotals}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>;projectId:string;allLocked:boolean;childTotals:Map<string,number>}) {
   return <><tr className="bg-gray-50"><td colSpan={allLocked?10:11} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0} projectId={projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}</>;
 }
-function BoqRow({item,executed,variation,projectId,allLocked}:{item:BoqItem;executed:number;variation:number;projectId:string;allLocked:boolean}) {
+function BoqRow({item,executed,variation,projectId,allLocked,childTotal}:{item:BoqItem;executed:number;variation:number;projectId:string;allLocked:boolean;childTotal?:number}) {
   const unit = Array.isArray(item.units) ? item.units[0]?.code : item.units?.code;
   const isDescription = item.unit_id == null;
   const revised = Number(item.original_quantity)+variation;
