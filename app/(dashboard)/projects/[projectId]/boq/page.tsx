@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import AddSectionForm from "@/components/boq/AddSectionForm";
 import AddItemForm from "@/components/boq/AddItemForm";
+import ConfirmBoqDeleteButton from "@/components/boq/ConfirmBoqDeleteButton";
 import { VariationForm, ExtraItemForm, ApprovalForm } from "@/components/boq/VariationExtraForms";
 import { pkr } from "@/lib/format";
 
@@ -45,19 +47,20 @@ async function addItem(formData: FormData) {
   const parentId = textValue(formData, "parent_boq_item_id");
   const boqNumber = textValue(formData, "boq_number");
   const description = textValue(formData, "description");
+  const rowType = textValue(formData, "row_type") === "description" ? "description" : "measured";
   const unitId = textValue(formData, "unit_id");
   const quantity = numberValue(formData, "original_quantity");
   const mrsRate = numberValue(formData, "mrs_rate");
   const contractRate = numberValue(formData, "contract_rate");
   const sortOrder = numberValue(formData, "sort_order") ?? 0;
 
-  if (!projectId || !boqNumber || !description || !unitId) throw new Error("BOQ number, description and unit are required.");
-  if (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0)) {
+  if (!projectId || !boqNumber || !description || (rowType === "measured" && !unitId)) throw new Error("BOQ number, description and unit are required.");
+  if (rowType === "measured" && (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0))) {
     throw new Error("Quantity and rates must be zero or greater.");
   }
-  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId).maybeSingle();
-  if (!unitRow) throw new Error("Selected unit was not found.");
-  const rateBasis = unitRow.code.startsWith("%") ? 100 : 1;
+  const { data: unitRow } = rowType === "measured" ? await supabase.from("units").select("code").eq("id", unitId!).maybeSingle() : { data: null };
+  if (rowType === "measured" && !unitRow) throw new Error("Selected unit was not found.");
+  const rateBasis = unitRow?.code.startsWith("%") ? 100 : 1;
 
   if (sectionId) {
     const { data } = await supabase.from("boq_sections").select("id").eq("id", sectionId).eq("project_id", projectId).maybeSingle();
@@ -70,8 +73,8 @@ async function addItem(formData: FormData) {
 
   const { error } = await supabase.from("boq_items").insert({
     project_id: projectId, section_id: sectionId, parent_boq_item_id: parentId,
-    boq_number: boqNumber, description, unit_id: unitId, original_quantity: quantity,
-    mrs_rate: mrsRate, contract_rate: contractRate, rate_basis: rateBasis, sort_order: sortOrder,
+    boq_number: boqNumber, description, unit_id: rowType === "description" ? null : unitId, original_quantity: rowType === "description" ? 0 : quantity,
+    mrs_rate: rowType === "description" ? null : mrsRate, contract_rate: rowType === "description" ? 0 : contractRate, rate_basis: rateBasis, sort_order: sortOrder,
     created_by: user.id, updated_by: user.id,
   });
   if (error) throw new Error(`Could not add BOQ item: ${error.message}`);
@@ -83,17 +86,18 @@ async function updateItem(formData: FormData) {
   const supabase = createClient(); const user = await currentUser(supabase);
   const projectId=textValue(formData,"project_id"), itemId=textValue(formData,"item_id");
   const sectionId=textValue(formData,"section_id"), parentId=textValue(formData,"parent_boq_item_id");
+  const rowType=textValue(formData,"row_type")==="description"?"description":"measured";
   const boqNumber=textValue(formData,"boq_number"), description=textValue(formData,"description"), unitId=textValue(formData,"unit_id");
   const quantity=numberValue(formData,"original_quantity"), mrsRate=numberValue(formData,"mrs_rate"), contractRate=numberValue(formData,"contract_rate"), sortOrder=numberValue(formData,"sort_order")??0;
-  if(!projectId||!itemId||!boqNumber||!description||!unitId) throw new Error("BOQ number, description and unit are required.");
-  if(quantity===null||quantity<0||contractRate===null||contractRate<0||(mrsRate!==null&&mrsRate<0)) throw new Error("Quantity and rates must be zero or greater.");
+  if(!projectId||!itemId||!boqNumber||!description||(rowType==="measured"&&!unitId)) throw new Error("BOQ number, description and unit are required.");
+  if(rowType==="measured"&&(quantity===null||quantity<0||contractRate===null||contractRate<0||(mrsRate!==null&&mrsRate<0))) throw new Error("Quantity and rates must be zero or greater.");
   const {data:existing}=await supabase.from("boq_items").select("id,is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle();
   if(!existing) throw new Error("BOQ item was not found."); if(existing.is_locked) throw new Error("Locked BOQ items cannot be edited.");
   if(parentId===itemId) throw new Error("A BOQ item cannot be its own parent.");
-  const {data:unit}=await supabase.from("units").select("code").eq("id",unitId).maybeSingle(); if(!unit) throw new Error("Selected unit was not found.");
+  const {data:unit}=rowType==="measured" ? await supabase.from("units").select("code").eq("id",unitId!).maybeSingle() : {data:null}; if(rowType==="measured"&&!unit) throw new Error("Selected unit was not found.");
   if(sectionId){const {data:s}=await supabase.from("boq_sections").select("id").eq("id",sectionId).eq("project_id",projectId).maybeSingle();if(!s)throw new Error("Selected BOQ section does not belong to this project.");}
   if(parentId){const {data:p}=await supabase.from("boq_items").select("id").eq("id",parentId).eq("project_id",projectId).maybeSingle();if(!p)throw new Error("Selected parent item does not belong to this project.");}
-  const {error}=await supabase.from("boq_items").update({section_id:sectionId,parent_boq_item_id:parentId,boq_number:boqNumber,description,unit_id:unitId,original_quantity:quantity,mrs_rate:mrsRate,contract_rate:contractRate,rate_basis:unit.code.startsWith("%")?100:1,sort_order:sortOrder,updated_by:user.id}).eq("id",itemId).eq("project_id",projectId).eq("is_locked",false);
+  const {error}=await supabase.from("boq_items").update({section_id:sectionId,parent_boq_item_id:parentId,boq_number:boqNumber,description,unit_id:rowType==="description"?null:unitId,original_quantity:rowType==="description"?0:quantity,mrs_rate:rowType==="description"?null:mrsRate,contract_rate:rowType==="description"?0:contractRate,rate_basis:unit?.code.startsWith("%")?100:1,sort_order:sortOrder,updated_by:user.id}).eq("id",itemId).eq("project_id",projectId).eq("is_locked",false);
   if(error) throw new Error(`Could not update BOQ item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
 }
 async function deleteItem(formData: FormData) {
@@ -101,7 +105,8 @@ async function deleteItem(formData: FormData) {
   const supabase=createClient(); await currentUser(supabase); const projectId=textValue(formData,"project_id"),itemId=textValue(formData,"item_id");
   if(!projectId||!itemId) throw new Error("Project and BOQ item are required.");
   const {data:item}=await supabase.from("boq_items").select("is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle(); if(!item) throw new Error("BOQ item was not found."); if(item.is_locked) throw new Error("Locked BOQ items cannot be deleted.");
-  const {error}=await supabase.from("boq_items").delete().eq("id",itemId).eq("project_id",projectId).eq("is_locked",false); if(error) throw new Error(`Could not delete BOQ item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
+  const {count:children,error:childError}=await supabase.from("boq_items").select("id",{count:"exact",head:true}).eq("parent_boq_item_id",itemId); if(childError) throw new Error(`Could not check sub-items: ${childError.message}`); if((children??0)>0) redirect(`/projects/${projectId}/boq?delete_error=has_children`);
+  const {error}=await supabase.from("boq_items").delete().eq("id",itemId).eq("project_id",projectId).eq("is_locked",false); if(error) redirect(`/projects/${projectId}/boq?delete_error=referenced`); revalidatePath(`/projects/${projectId}/boq`); redirect(`/projects/${projectId}/boq?delete_success=1`);
 }
 
 
@@ -181,7 +186,7 @@ type BoqItem = {
   sort_order: number; is_locked: boolean; unit_id: string | null; units: { code: string } | { code: string }[] | null;
 };
 
-export default async function BoqPage({ params, searchParams }: { params: { projectId: string }; searchParams?: { edit?: string } }) {
+export default async function BoqPage({ params, searchParams }: { params: { projectId: string }; searchParams?: { edit?: string; delete_error?: string; delete_success?: string } }) {
   const supabase = createClient();
   const [
     { data: project }, { data: sections, error: sectionError }, { data: rawItems, error: itemError },
@@ -210,11 +215,15 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
   const allLocked = items.length > 0 && items.every((i) => i.is_locked);
   const editingItem = !allLocked && searchParams?.edit ? items.find((i) => i.id === searchParams.edit && !i.is_locked) ?? null : null;
 
+  const childTotals = new Map<string,number>();
+  for(const item of items) if(item.parent_boq_item_id) childTotals.set(item.parent_boq_item_id,(childTotals.get(item.parent_boq_item_id)??0)+Number(item.original_contract_amount??(Number(item.original_quantity)*Number(item.contract_rate)/Number(item.rate_basis||1))));
   const grouped = (sections ?? []).map((section) => ({ section, items: items.filter((i) => i.section_id === section.id) }));
   const ungrouped = items.filter((i) => !i.section_id);
 
   return (
     <div className="space-y-6">
+      {searchParams?.delete_error && <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{searchParams.delete_error === "has_children" ? "This parent BOQ item has sub-items. Delete or move its child items first; no records were deleted." : "This BOQ item is referenced by another record and cannot be deleted safely. No records were deleted."}</div>}
+      {searchParams?.delete_success && <div role="status" className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">BOQ item deleted successfully.</div>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-lg font-semibold text-gray-900">Bill of Quantities</h2><p className="mt-1 text-sm text-gray-500">Original BOQ, approved quantity changes and execution are kept separately.</p></div>
         {!allLocked && items.length > 0 && <form action={lockOriginalBoq}><input type="hidden" name="project_id" value={params.projectId}/><button className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">Lock original BOQ</button></form>}
@@ -234,7 +243,7 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
 
       {!allLocked && <div className="grid gap-4 md:grid-cols-2"><AddSectionForm projectId={params.projectId} action={addSection}/><AddItemForm key={editingItem?.id ?? "new"} projectId={params.projectId} sections={sections ?? []} items={items.filter(i=>i.id!==editingItem?.id).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description}))} units={units ?? []} action={editingItem?updateItem:addItem} editingItem={editingItem}/></div>}
       {allLocked && <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">The original BOQ is locked. Quantity changes are recorded as variations, and non-BOQ work as extra items.</div>}
-      {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
+      {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.filter(i=>i.unit_id!==null).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
       {allLocked && <div className="grid gap-4 xl:grid-cols-2">
         <ChangeRegister title="Variation register" empty="No variations recorded." projectId={params.projectId} action={decideChange} rows={(variations??[]).map((v:any)=>({id:v.id,kind:"variation" as const,name:`${v.boq_items?.boq_number ?? "BOQ"} — ${v.boq_items?.description ?? ""}`,detail:`Proposed Δ ${Number(v.proposed_quantity).toLocaleString()} · Approved Δ ${v.approved_quantity==null?"—":Number(v.approved_quantity).toLocaleString()}`,status:v.status,reference:v.approval_reference,date:v.approval_date,proposedQuantity:Number(v.proposed_quantity)}))}/>
         <ChangeRegister title="Extra item register" empty="No extra items recorded." projectId={params.projectId} action={decideChange} rows={(extraItems??[]).map((e:any)=>({id:e.id,kind:"extra" as const,name:e.description,detail:`${Number(e.quantity).toLocaleString()} ${Array.isArray(e.units)?e.units[0]?.code:e.units?.code ?? ""} · Proposed ${e.proposed_rate==null?"—":pkr(Number(e.proposed_rate))} · Approved ${e.approved_rate==null?"—":pkr(Number(e.approved_rate))}`,status:e.status,reference:e.approval_reference,date:e.approval_date,proposedRate:e.proposed_rate==null?null:Number(e.proposed_rate)}))}/>
@@ -251,8 +260,8 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
               <th className="px-4 py-3 text-right font-medium">Revised Qty</th><th className="px-4 py-3 text-right font-medium">Executed</th>{!allLocked&&<th className="px-4 py-3 font-medium">Actions</th>}
             </tr></thead>
             <tbody>
-              {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem} projectId={params.projectId} allLocked={allLocked}/>)}
-              {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0} projectId={params.projectId} allLocked={allLocked}/>)}
+              {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem} projectId={params.projectId} allLocked={allLocked} childTotals={childTotals}/>)}
+              {ungrouped.map(item => <BoqRow key={item.id} item={item} executed={executedByItem.get(item.id) ?? 0} variation={approvedVariationByItem.get(item.id) ?? 0} projectId={params.projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}
               {!items.length && <tr><td colSpan={allLocked?10:11} className="px-4 py-10 text-center text-gray-500">No BOQ items yet. Add sections and original BOQ items above.</td></tr>}
             </tbody>
           </table>
@@ -263,22 +272,23 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
 }
 
 function Metric({label,value,text}:{label:string;value?:number;text?:string}) { return <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-lg font-semibold">{text ?? pkr(value ?? 0)}</div></div>; }
-function SectionRows({name,items,executed,variations,projectId,allLocked}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>;projectId:string;allLocked:boolean}) {
-  return <><tr className="bg-gray-50"><td colSpan={allLocked?10:11} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0} projectId={projectId} allLocked={allLocked}/>)}</>;
+function SectionRows({name,items,executed,variations,projectId,allLocked,childTotals}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>;projectId:string;allLocked:boolean;childTotals:Map<string,number>}) {
+  return <><tr className="bg-gray-50"><td colSpan={allLocked?10:11} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0} projectId={projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}</>;
 }
-function BoqRow({item,executed,variation,projectId,allLocked}:{item:BoqItem;executed:number;variation:number;projectId:string;allLocked:boolean}) {
+function BoqRow({item,executed,variation,projectId,allLocked,childTotal}:{item:BoqItem;executed:number;variation:number;projectId:string;allLocked:boolean;childTotal?:number}) {
   const unit = Array.isArray(item.units) ? item.units[0]?.code : item.units?.code;
+  const isDescription = item.unit_id == null;
   const revised = Number(item.original_quantity)+variation;
   const amount = Number(item.original_contract_amount ?? (Number(item.original_quantity) * Number(item.contract_rate) / Number(item.rate_basis || 1)));
-  return <tr className="border-b border-border align-top last:border-0 hover:bg-gray-50">
-    <td className="whitespace-nowrap px-4 py-3 font-medium">{item.boq_number}{item.is_locked && <span className="ml-2 text-[10px] text-gray-400">LOCKED</span>}</td>
-    <td className="min-w-[360px] max-w-xl whitespace-normal px-4 py-3 leading-5 text-gray-700">{item.description}</td>
-    <td className="px-4 py-3 text-right tabular-nums">{Number(item.original_quantity).toLocaleString()}</td><td className="px-4 py-3">{unit ?? "—"}</td>
+  return <tr className={`border-b border-border align-top last:border-0 hover:bg-gray-50 ${isDescription ? "bg-slate-50 font-semibold" : ""}`}>
+    <td className="whitespace-nowrap px-4 py-3 font-medium">{item.parent_boq_item_id ? "↳ " : ""}{item.boq_number}{item.is_locked && <span className="ml-2 text-[10px] text-gray-400">LOCKED</span>}</td>
+    <td className={`min-w-[360px] max-w-xl whitespace-normal px-4 py-3 leading-5 text-gray-700 ${item.parent_boq_item_id ? "pl-8" : ""}`}>{item.description}</td>
+    <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.original_quantity).toLocaleString()}</td><td className="px-4 py-3">{unit ?? "—"}</td>
     <td className="px-4 py-3 text-right tabular-nums">{item.mrs_rate == null ? "—" : Number(item.mrs_rate).toLocaleString()}</td>
-    <td className="px-4 py-3 text-right tabular-nums">{Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{pkr(amount)}</td>
-    <td className="px-4 py-3 text-right tabular-nums">{variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{revised.toLocaleString()}</td>
-    <td className="px-4 py-3 text-right tabular-nums">{executed.toLocaleString()}</td>
-    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><button className="font-medium text-red-600 hover:underline">Delete</button></form></>}</td>}
+    <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? (childTotal == null ? "—" : pkr(childTotal)) : pkr(amount)}</td>
+    <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : revised.toLocaleString()}</td>
+    <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : executed.toLocaleString()}</td>
+    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><ConfirmBoqDeleteButton boqNumber={item.boq_number} description={item.description}/></form></>}</td>}
   </tr>;
 }
 
