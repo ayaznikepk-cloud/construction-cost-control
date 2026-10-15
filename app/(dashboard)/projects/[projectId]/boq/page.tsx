@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import AddSectionForm from "@/components/boq/AddSectionForm";
 import AddItemForm from "@/components/boq/AddItemForm";
 import ConfirmBoqDeleteButton from "@/components/boq/ConfirmBoqDeleteButton";
+import BoqPrintButton from "@/components/boq/BoqPrintButton";
 import { VariationForm, ExtraItemForm, ApprovalForm } from "@/components/boq/VariationExtraForms";
 import { pkr } from "@/lib/format";
 
@@ -226,11 +227,20 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
       {searchParams?.delete_success && <div role="status" className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">BOQ item deleted successfully.</div>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-lg font-semibold text-gray-900">Bill of Quantities</h2><p className="mt-1 text-sm text-gray-500">Original BOQ, approved quantity changes and execution are kept separately.</p></div>
-        {!allLocked && items.length > 0 && <form action={lockOriginalBoq}><input type="hidden" name="project_id" value={params.projectId}/><button className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">Lock original BOQ</button></form>}
-        {allLocked && <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">Original BOQ locked</span>}
+        <div className="flex flex-wrap items-center gap-2">
+          <BoqPrintButton />
+          {!allLocked && items.length > 0 && <form action={lockOriginalBoq}><input type="hidden" name="project_id" value={params.projectId}/><button className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">Lock original BOQ</button></form>}
+          {allLocked && <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">Original BOQ locked</span>}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div id="boq-print-area">
+        <div className="print-only-header hidden">
+          <h2>Bill of Quantities</h2>
+          <p>Original BOQ, approved quantity changes and execution.</p>
+        </div>
+
+      <div className="print-summary grid gap-4 md:grid-cols-4">
         <Metric label="Approved DNIT / MRS" value={Number(project?.approved_dnit_mrs_amount ?? 0)} />
         <Metric label="MRS BOQ Total" value={originalMrsValue} />
         <Metric label="Award / Agreement" value={Number(project?.original_contract_amount ?? 0)} />
@@ -241,15 +251,15 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
         <Metric label="Revised BOQ Value" value={revisedBoqValue} />
       </div>
 
-      {!allLocked && <div className="grid gap-4 md:grid-cols-2"><AddSectionForm projectId={params.projectId} action={addSection}/><AddItemForm key={editingItem?.id ?? "new"} projectId={params.projectId} sections={sections ?? []} items={items.filter(i=>i.id!==editingItem?.id).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description}))} units={units ?? []} action={editingItem?updateItem:addItem} editingItem={editingItem}/></div>}
-      {allLocked && <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">The original BOQ is locked. Quantity changes are recorded as variations, and non-BOQ work as extra items.</div>}
-      {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.filter(i=>i.unit_id!==null).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
-      {allLocked && <div className="grid gap-4 xl:grid-cols-2">
+      {!allLocked && <div className="boq-screen-only grid gap-4 md:grid-cols-2"><AddSectionForm projectId={params.projectId} action={addSection}/><AddItemForm key={editingItem?.id ?? "new"} projectId={params.projectId} sections={sections ?? []} items={items.filter(i=>i.id!==editingItem?.id).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description}))} units={units ?? []} action={editingItem?updateItem:addItem} editingItem={editingItem}/></div>}
+      {allLocked && <div className="boq-screen-only rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">The original BOQ is locked. Quantity changes are recorded as variations, and non-BOQ work as extra items.</div>}
+      {allLocked && <div className="boq-screen-only grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.filter(i=>i.unit_id!==null).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
+      {allLocked && <div className="boq-screen-only grid gap-4 xl:grid-cols-2">
         <ChangeRegister title="Variation register" empty="No variations recorded." projectId={params.projectId} action={decideChange} rows={(variations??[]).map((v:any)=>({id:v.id,kind:"variation" as const,name:`${v.boq_items?.boq_number ?? "BOQ"} — ${v.boq_items?.description ?? ""}`,detail:`Proposed Δ ${Number(v.proposed_quantity).toLocaleString()} · Approved Δ ${v.approved_quantity==null?"—":Number(v.approved_quantity).toLocaleString()}`,status:v.status,reference:v.approval_reference,date:v.approval_date,proposedQuantity:Number(v.proposed_quantity)}))}/>
         <ChangeRegister title="Extra item register" empty="No extra items recorded." projectId={params.projectId} action={decideChange} rows={(extraItems??[]).map((e:any)=>({id:e.id,kind:"extra" as const,name:e.description,detail:`${Number(e.quantity).toLocaleString()} ${Array.isArray(e.units)?e.units[0]?.code:e.units?.code ?? ""} · Proposed ${e.proposed_rate==null?"—":pkr(Number(e.proposed_rate))} · Approved ${e.approved_rate==null?"—":pkr(Number(e.approved_rate))}`,status:e.status,reference:e.approval_reference,date:e.approval_date,proposedRate:e.proposed_rate==null?null:Number(e.proposed_rate)}))}/>
       </div>}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-white">
+      <div className="print-table-wrap overflow-hidden rounded-xl border border-border bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1200px] text-sm">
             <thead className="bg-gray-50"><tr className="border-b border-border text-left text-xs text-gray-500">
@@ -257,7 +267,7 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
               <th className="px-4 py-3 text-right font-medium">Original Qty</th><th className="px-4 py-3 font-medium">Unit</th>
               <th className="px-4 py-3 text-right font-medium">MRS Rate</th><th className="px-4 py-3 text-right font-medium">Contract Rate</th>
               <th className="px-4 py-3 text-right font-medium">Original Amount</th><th className="px-4 py-3 text-right font-medium">Approved Var.</th>
-              <th className="px-4 py-3 text-right font-medium">Revised Qty</th><th className="px-4 py-3 text-right font-medium">Executed</th>{!allLocked&&<th className="px-4 py-3 font-medium">Actions</th>}
+              <th className="px-4 py-3 text-right font-medium">Revised Qty</th><th className="px-4 py-3 text-right font-medium">Executed</th>{!allLocked&&<th className="boq-actions px-4 py-3 font-medium">Actions</th>}
             </tr></thead>
             <tbody>
               {grouped.map(({section,items:sectionItems}) => <SectionRows key={section.id} name={section.name} items={sectionItems} executed={executedByItem} variations={approvedVariationByItem} projectId={params.projectId} allLocked={allLocked} childTotals={childTotals}/>)}
@@ -267,28 +277,29 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
           </table>
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
 function Metric({label,value,text}:{label:string;value?:number;text?:string}) { return <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-lg font-semibold">{text ?? pkr(value ?? 0)}</div></div>; }
 function SectionRows({name,items,executed,variations,projectId,allLocked,childTotals}:{name:string;items:BoqItem[];executed:Map<string,number>;variations:Map<string,number>;projectId:string;allLocked:boolean;childTotals:Map<string,number>}) {
-  return <><tr className="bg-gray-50"><td colSpan={allLocked?10:11} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0} projectId={projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}</>;
+  return <><tr className="boq-section-row bg-gray-50"><td colSpan={allLocked?10:11} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-600">{name}</td></tr>{items.map(item=><BoqRow key={item.id} item={item} executed={executed.get(item.id)??0} variation={variations.get(item.id)??0} projectId={projectId} allLocked={allLocked} childTotal={childTotals.get(item.id)}/>)}</>;
 }
 function BoqRow({item,executed,variation,projectId,allLocked,childTotal}:{item:BoqItem;executed:number;variation:number;projectId:string;allLocked:boolean;childTotal?:number}) {
   const unit = Array.isArray(item.units) ? item.units[0]?.code : item.units?.code;
   const isDescription = item.unit_id == null;
   const revised = Number(item.original_quantity)+variation;
   const amount = Number(item.original_contract_amount ?? (Number(item.original_quantity) * Number(item.contract_rate) / Number(item.rate_basis || 1)));
-  return <tr className={`border-b border-border align-top last:border-0 hover:bg-gray-50 ${isDescription ? "bg-slate-50 font-semibold" : ""}`}>
-    <td className="whitespace-nowrap px-4 py-3 font-medium">{item.parent_boq_item_id ? "↳ " : ""}{item.boq_number}{item.is_locked && <span className="ml-2 text-[10px] text-gray-400">LOCKED</span>}</td>
+  return <tr className={`border-b border-border align-top last:border-0 hover:bg-gray-50 ${isDescription ? "boq-description-row bg-slate-50 font-semibold" : ""}`}>
+    <td className="whitespace-nowrap px-4 py-3 font-medium">{item.parent_boq_item_id ? "↳ " : ""}{item.boq_number}{item.is_locked && <span className="boq-locked-label ml-2 text-[10px] text-gray-400">LOCKED</span>}</td>
     <td className={`min-w-[360px] max-w-xl whitespace-normal px-4 py-3 leading-5 text-gray-700 ${item.parent_boq_item_id ? "pl-8" : ""}`}>{item.description}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.original_quantity).toLocaleString()}</td><td className="px-4 py-3">{unit ?? "—"}</td>
     <td className="px-4 py-3 text-right tabular-nums">{item.mrs_rate == null ? "—" : Number(item.mrs_rate).toLocaleString()}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : Number(item.contract_rate).toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? (childTotal == null ? "—" : pkr(childTotal)) : pkr(amount)}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : variation.toLocaleString()}</td><td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : revised.toLocaleString()}</td>
     <td className="px-4 py-3 text-right tabular-nums">{isDescription ? "—" : executed.toLocaleString()}</td>
-    {!allLocked&&<td className="whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><ConfirmBoqDeleteButton boqNumber={item.boq_number} description={item.description}/></form></>}</td>}
+    {!allLocked&&<td className="boq-actions whitespace-nowrap px-4 py-3">{item.is_locked?<span className="text-xs text-gray-400">Locked</span>:<><a href={`/projects/${projectId}/boq?edit=${item.id}`} className="mr-3 font-medium text-blue-600 hover:underline">Edit</a><form action={deleteItem} className="inline"><input type="hidden" name="project_id" value={projectId}/><input type="hidden" name="item_id" value={item.id}/><ConfirmBoqDeleteButton boqNumber={item.boq_number} description={item.description}/></form></>}</td>}
   </tr>;
 }
 
