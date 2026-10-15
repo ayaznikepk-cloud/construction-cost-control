@@ -103,7 +103,8 @@ async function deleteItem(formData: FormData) {
   const supabase=createClient(); await currentUser(supabase); const projectId=textValue(formData,"project_id"),itemId=textValue(formData,"item_id");
   if(!projectId||!itemId) throw new Error("Project and BOQ item are required.");
   const {data:item}=await supabase.from("boq_items").select("is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle(); if(!item) throw new Error("BOQ item was not found."); if(item.is_locked) throw new Error("Locked BOQ items cannot be deleted.");
-  const {error}=await supabase.from("boq_items").delete().eq("id",itemId).eq("project_id",projectId).eq("is_locked",false); if(error) throw new Error(`Could not delete BOQ item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
+  const {count:children,error:childError}=await supabase.from("boq_items").select("id",{count:"exact",head:true}).eq("parent_boq_item_id",itemId); if(childError) throw new Error(`Could not check sub-items: ${childError.message}`); if((children??0)>0) redirect(`/projects/${projectId}/boq?delete_error=has_children`);
+  const {error}=await supabase.from("boq_items").delete().eq("id",itemId).eq("project_id",projectId).eq("is_locked",false); if(error) redirect(`/projects/${projectId}/boq?delete_error=referenced`); revalidatePath(`/projects/${projectId}/boq`); redirect(`/projects/${projectId}/boq?delete_success=1`);
 }
 
 
