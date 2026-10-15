@@ -45,19 +45,20 @@ async function addItem(formData: FormData) {
   const parentId = textValue(formData, "parent_boq_item_id");
   const boqNumber = textValue(formData, "boq_number");
   const description = textValue(formData, "description");
+  const rowType = textValue(formData, "row_type") === "description" ? "description" : "measured";
   const unitId = textValue(formData, "unit_id");
   const quantity = numberValue(formData, "original_quantity");
   const mrsRate = numberValue(formData, "mrs_rate");
   const contractRate = numberValue(formData, "contract_rate");
   const sortOrder = numberValue(formData, "sort_order") ?? 0;
 
-  if (!projectId || !boqNumber || !description || !unitId) throw new Error("BOQ number, description and unit are required.");
-  if (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0)) {
+  if (!projectId || !boqNumber || !description || (rowType === "measured" && !unitId)) throw new Error("BOQ number, description and unit are required.");
+  if (rowType === "measured" && (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0))) {
     throw new Error("Quantity and rates must be zero or greater.");
   }
-  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId).maybeSingle();
-  if (!unitRow) throw new Error("Selected unit was not found.");
-  const rateBasis = unitRow.code.startsWith("%") ? 100 : 1;
+  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId ?? "").maybeSingle();
+  if (rowType === "measured" && !unitRow) throw new Error("Selected unit was not found.");
+  const rateBasis = unitRow?.code.startsWith("%") ? 100 : 1;
 
   if (sectionId) {
     const { data } = await supabase.from("boq_sections").select("id").eq("id", sectionId).eq("project_id", projectId).maybeSingle();
@@ -70,8 +71,8 @@ async function addItem(formData: FormData) {
 
   const { error } = await supabase.from("boq_items").insert({
     project_id: projectId, section_id: sectionId, parent_boq_item_id: parentId,
-    boq_number: boqNumber, description, unit_id: unitId, original_quantity: quantity,
-    mrs_rate: mrsRate, contract_rate: contractRate, rate_basis: rateBasis, sort_order: sortOrder,
+    boq_number: boqNumber, description, unit_id: rowType === "description" ? null : unitId, original_quantity: rowType === "description" ? 0 : quantity,
+    mrs_rate: rowType === "description" ? null : mrsRate, contract_rate: rowType === "description" ? 0 : contractRate, rate_basis: rateBasis, sort_order: sortOrder,
     created_by: user.id, updated_by: user.id,
   });
   if (error) throw new Error(`Could not add BOQ item: ${error.message}`);
@@ -83,17 +84,18 @@ async function updateItem(formData: FormData) {
   const supabase = createClient(); const user = await currentUser(supabase);
   const projectId=textValue(formData,"project_id"), itemId=textValue(formData,"item_id");
   const sectionId=textValue(formData,"section_id"), parentId=textValue(formData,"parent_boq_item_id");
+  const rowType=textValue(formData,"row_type")==="description"?"description":"measured";
   const boqNumber=textValue(formData,"boq_number"), description=textValue(formData,"description"), unitId=textValue(formData,"unit_id");
   const quantity=numberValue(formData,"original_quantity"), mrsRate=numberValue(formData,"mrs_rate"), contractRate=numberValue(formData,"contract_rate"), sortOrder=numberValue(formData,"sort_order")??0;
-  if(!projectId||!itemId||!boqNumber||!description||!unitId) throw new Error("BOQ number, description and unit are required.");
-  if(quantity===null||quantity<0||contractRate===null||contractRate<0||(mrsRate!==null&&mrsRate<0)) throw new Error("Quantity and rates must be zero or greater.");
+  if(!projectId||!itemId||!boqNumber||!description||(rowType==="measured"&&!unitId)) throw new Error("BOQ number, description and unit are required.");
+  if(rowType==="measured"&&(quantity===null||quantity<0||contractRate===null||contractRate<0||(mrsRate!==null&&mrsRate<0))) throw new Error("Quantity and rates must be zero or greater.");
   const {data:existing}=await supabase.from("boq_items").select("id,is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle();
   if(!existing) throw new Error("BOQ item was not found."); if(existing.is_locked) throw new Error("Locked BOQ items cannot be edited.");
   if(parentId===itemId) throw new Error("A BOQ item cannot be its own parent.");
-  const {data:unit}=await supabase.from("units").select("code").eq("id",unitId).maybeSingle(); if(!unit) throw new Error("Selected unit was not found.");
+  const {data:unit}=await supabase.from("units").select("code").eq("id",unitId).maybeSingle(); if(rowType==="measured"&&!unit) throw new Error("Selected unit was not found.");
   if(sectionId){const {data:s}=await supabase.from("boq_sections").select("id").eq("id",sectionId).eq("project_id",projectId).maybeSingle();if(!s)throw new Error("Selected BOQ section does not belong to this project.");}
   if(parentId){const {data:p}=await supabase.from("boq_items").select("id").eq("id",parentId).eq("project_id",projectId).maybeSingle();if(!p)throw new Error("Selected parent item does not belong to this project.");}
-  const {error}=await supabase.from("boq_items").update({section_id:sectionId,parent_boq_item_id:parentId,boq_number:boqNumber,description,unit_id:unitId,original_quantity:quantity,mrs_rate:mrsRate,contract_rate:contractRate,rate_basis:unit.code.startsWith("%")?100:1,sort_order:sortOrder,updated_by:user.id}).eq("id",itemId).eq("project_id",projectId).eq("is_locked",false);
+  const {error}=await supabase.from("boq_items").update({section_id:sectionId,parent_boq_item_id:parentId,boq_number:boqNumber,description,unit_id:rowType==="description"?null:unitId,original_quantity:rowType==="description"?0:quantity,mrs_rate:rowType==="description"?null:mrsRate,contract_rate:rowType==="description"?0:contractRate,rate_basis:unit?.code.startsWith("%")?100:1,sort_order:sortOrder,updated_by:user.id}).eq("id",itemId).eq("project_id",projectId).eq("is_locked",false);
   if(error) throw new Error(`Could not update BOQ item: ${error.message}`); revalidatePath(`/projects/${projectId}/boq`);
 }
 async function deleteItem(formData: FormData) {
