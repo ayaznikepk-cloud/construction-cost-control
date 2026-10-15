@@ -36,6 +36,9 @@ export default async function ProjectOverviewPage({params}:{params:{projectId:st
       <MetricCard label="Awarded Contract Value" value={Number(project?.original_contract_amount ?? s.contract_value)} />
       <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Performance Security</div><div className="mt-1 text-xl font-semibold">{project?.performance_security == null ? "—" : `Rs ${money(project.performance_security)}`}</div></div>
     </div>
+    <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Earnest Money</div><div className="mt-1 text-xl font-semibold">{project?.earnest_money == null ? "—" : `Rs ${money(project.earnest_money)}`}</div></div>
+    </div>
     <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
       <MetricCard label="Contract Value" value={Number(s.contract_value)} />
       <MetricCard label="Work Executed" value={Number(s.work_executed_value)} />
