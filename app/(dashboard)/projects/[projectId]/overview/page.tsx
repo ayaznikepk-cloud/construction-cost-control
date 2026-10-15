@@ -8,8 +8,9 @@ const money=(v:unknown)=>Number(v??0).toLocaleString("en-PK",{maximumFractionDig
 
 export default async function ProjectOverviewPage({params}:{params:{projectId:string}}){
   const supabase=createClient();
-  const [{data:summary},{data:bills},{data:purchases},{data:securities}]=await Promise.all([
+  const [{data:summary},{data:project},{data:bills},{data:purchases},{data:securities}]=await Promise.all([
     supabase.from("v_project_financial_summary").select("*").eq("project_id",params.projectId).single(),
+    supabase.from("projects").select("approved_dnit_mrs_amount,bid_percentage,original_contract_amount,performance_security,earnest_money").eq("id",params.projectId).single(),
     supabase.from("ra_bills").select("id,bill_number,status,gross_claimed_amount,passed_amount,created_at").eq("project_id",params.projectId).order("created_at",{ascending:false}).limit(5),
     supabase.from("purchases").select("id,invoice_number,invoice_date,status,created_at").eq("project_id",params.projectId).order("created_at",{ascending:false}).limit(5),
     supabase.from("securities").select("id,type,amount,expiry_date,status").eq("project_id",params.projectId)
@@ -29,6 +30,12 @@ export default async function ProjectOverviewPage({params}:{params:{projectId:st
   if(expiring.length)alerts.push({label:"Security / guarantee expiring",detail:`${expiring.length} item${expiring.length===1?"":"s"} expire within 30 days.`,href:"/securities"});
 
   return <div className="min-w-0">
+    <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Tender Amount</div><div className="mt-1 text-xl font-semibold">{project?.approved_dnit_mrs_amount == null ? "—" : `Rs ${money(project.approved_dnit_mrs_amount)}`}</div></div>
+      <div className="rounded-xl border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Bid Percentage</div><div className={`mt-2 text-2xl font-semibold tabular-nums ${project?.bid_percentage == null ? "text-gray-400" : Number(project.bid_percentage) < 0 ? "text-red-700" : Number(project.bid_percentage) > 0 ? "text-orange-700" : "text-gray-900"}`}>{project?.bid_percentage == null ? "—" : `${Number(project.bid_percentage) > 0 ? "+" : ""}${Number(project.bid_percentage).toFixed(2)}%`}</div><div className="mt-1 text-xs text-gray-500">{project?.bid_percentage == null ? "Not recorded" : Number(project.bid_percentage) < 0 ? "Below tender" : Number(project.bid_percentage) > 0 ? "Above tender" : "At par"}</div></div>
+      <MetricCard label="Awarded Contract Value" value={Number(project?.original_contract_amount ?? s.contract_value)} />
+      <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Performance Security</div><div className="mt-1 text-xl font-semibold">{project?.performance_security == null ? "—" : `Rs ${money(project.performance_security)}`}</div></div>
+    </div>
     <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
       <MetricCard label="Contract Value" value={Number(s.contract_value)} />
       <MetricCard label="Work Executed" value={Number(s.work_executed_value)} />
