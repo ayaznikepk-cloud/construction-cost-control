@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const sections = [
@@ -88,6 +88,7 @@ function Navigation({ close }: { close?: () => void }) {
 
 export default function AppSidebar() {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -96,10 +97,12 @@ export default function AppSidebar() {
   }, [open]);
 
   return <>
-    <aside className="hidden w-64 flex-shrink-0 bg-navy text-gray-300 lg:flex lg:flex-col">
-      <div className="px-5 py-5 text-sm font-semibold text-white">Construction Cost Control</div>
-      <Navigation />
-      <SignOutButton />
+    <button type="button" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className={`fixed top-3 z-30 hidden rounded-md border bg-white p-2 text-gray-700 shadow-sm transition-[left] duration-300 hover:bg-gray-50 lg:block ${collapsed ? "left-3" : "left-[13.5rem]"}`}>
+      {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+    </button>
+    <aside className={`${collapsed ? "lg:w-0" : "lg:w-64"} hidden flex-shrink-0 overflow-hidden bg-navy text-gray-300 transition-[width] duration-300 lg:flex lg:flex-col`}>
+      <div className="w-64 px-5 py-5 text-sm font-semibold text-white">Construction Cost Control</div>
+      <div className="flex min-h-0 w-64 flex-1 flex-col"><Navigation /><SignOutButton /></div>
     </aside>
 
     <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 lg:hidden">
