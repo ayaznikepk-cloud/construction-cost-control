@@ -67,6 +67,7 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       <td>{unit ?? "—"}</td>
       <td className="text-right">{i.mrs_rate == null ? "—" : Number(i.mrs_rate).toLocaleString("en-PK")}</td>
       <td className="text-right">{heading ? "—" : Number(i.contract_rate).toLocaleString("en-PK")}</td>
+      <td className="text-right">{heading ? "—" : pkr(mrsAmount(i))}</td>
       <td className="text-right">{heading ? (children.has(i.id) ? pkr(children.get(i.id)!) : "—") : pkr(contractAmount(i))}</td>
       <td className="text-right">{heading ? "—" : variation.toLocaleString("en-PK")}</td>
       <td className="text-right">{heading ? "—" : (Number(i.original_quantity)+variation).toLocaleString("en-PK")}</td>
@@ -89,9 +90,9 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       </div>
       <div className="print-table-scroll">
         <table className="print-table w-full text-left text-xs">
-          <thead><tr><th>BOQ #</th><th>Description</th><th className="text-right">Original Qty</th><th>Unit</th><th className="text-right">MRS Rate</th><th className="text-right">Contract Rate</th><th className="text-right">Original Amount</th><th className="text-right">Approved Var.</th><th className="text-right">Revised Qty</th></tr></thead>
+          <thead><tr><th>BOQ #</th><th>Description</th><th className="text-right">Original Qty</th><th>Unit</th><th className="text-right">MRS Rate</th><th className="text-right">Contract Rate</th><th className="text-right">Original MRS Amount</th><th className="text-right">Original Amount</th><th className="text-right">Approved Var.</th><th className="text-right">Revised Qty</th></tr></thead>
           <tbody>
-            {sectionGroups.map(({section,rows})=><>{/* Section names separate BOQ groups */}<tr key={section.id} className="bg-gray-100 font-semibold"><td colSpan={9}>{section.name}</td></tr>{renderRows(rows)}</>)}
+            {sectionGroups.map(({section,rows})=><>{/* Section names separate BOQ groups */}<tr key={section.id} className="bg-gray-100 font-semibold"><td colSpan={10}>{section.name}</td></tr>{renderRows(rows)}</>)}
             {renderRows(items.filter(i=>!i.section_id))}
             {!items.length && <tr><td colSpan={9}>No BOQ items recorded.</td></tr>}
           </tbody>
