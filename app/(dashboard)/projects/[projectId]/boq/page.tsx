@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import AddSectionForm from "@/components/boq/AddSectionForm";
 import AddItemForm from "@/components/boq/AddItemForm";
 import ConfirmBoqDeleteButton from "@/components/boq/ConfirmBoqDeleteButton";
-import BoqPrintButton from "@/components/boq/BoqPrintButton";
+
 import { VariationForm, ExtraItemForm, ApprovalForm } from "@/components/boq/VariationExtraForms";
 import { pkr } from "@/lib/format";
 
@@ -228,13 +228,13 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-lg font-semibold text-gray-900">Bill of Quantities</h2><p className="mt-1 text-sm text-gray-500">Original BOQ, approved quantity changes and execution are kept separately.</p></div>
         <div className="flex flex-wrap items-center gap-2">
-          <BoqPrintButton />
+          <a href={`/print/boq/${params.projectId}`} className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">Print / Save as PDF</a>
           {!allLocked && items.length > 0 && <form action={lockOriginalBoq}><input type="hidden" name="project_id" value={params.projectId}/><button className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">Lock original BOQ</button></form>}
           {allLocked && <span className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">Original BOQ locked</span>}
         </div>
       </div>
 
-      <div id="boq-print-area">
+      <div>
         <div className="print-only-header hidden">
           <h2>Bill of Quantities</h2>
           <p>Original BOQ, approved quantity changes and execution.</p>
