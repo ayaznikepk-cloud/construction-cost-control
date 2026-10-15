@@ -1,41 +1,45 @@
 # Construction Cost Control
 
-This folder is the beginning of the app: authentication, sidebar navigation,
-a dashboard pulling from `v_project_financial_summary`, and a working
-Projects screen (list + add).
+Production application for construction project cost control, site operations, labour, materials, purchasing, subcontractors, receipts, securities, documents, reporting and project progress.
 
-## What's real right now
-- Login (Supabase Auth)
-- Role-gated route protection (middleware redirects to /login if not signed in)
-- Dashboard reading live data from your Supabase database
-- Projects: list existing + add new (writes to the real `projects` table)
+## Production requirements
 
-## What's not built yet
-Everything else in the navigation (BOQ, Attendance, Materials, RA Bills, etc.)
-is listed in the sidebar but has no page yet — clicking those links will 404
-until we build each one in the coming phases.
+- Node.js compatible with Next.js 14
+- Supabase project with the application's schema, RLS policies and functions deployed
+- Supabase Edge Function `admin-create-user` deployed with:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+- Application environment variables:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-## Before this works, you need one manual step
+Copy `.env.example` to `.env.local` for local development. Never commit real credentials.
 
-Your database has RLS enabled, meaning **only authenticated users tied to
-your organization can see any data**. Right now there is no user yet. Create
-one:
+## Local verification
 
-1. In Supabase, go to Authentication → Users → "Add user"
-2. Create yourself with an email + password
-3. Go to Table Editor → `organizations`, add one row (any name)
-4. Go to Table Editor → `users`, add a row with the same `id` as your new
-   auth user (copy it from the Authentication page) and the `org_id` from
-   step 3
+```bash
+npm install
+npm run lint
+npm run build
+npm start
+```
 
-I'll turn this into a proper onboarding screen in a later phase — for now
-it's a one-time manual step to get your first login working.
+Before deploying, verify login, project access, role restrictions, data-entry workflows and print/PDF screens using production-like data.
 
-## Deployment (Vercel)
+## Deployment
 
-1. Push this folder to a new GitHub repository
-2. Go to vercel.com, sign in with GitHub, click "Add New Project"
-3. Import the repository
-4. In the environment variables section, add the two values from your
-   `.env.local` file
-5. Click Deploy — you'll get a live `.vercel.app` URL in about a minute
+The app is suitable for deployment to Vercel or another Node.js host that supports Next.js.
+
+1. Configure the two application environment variables in the hosting platform.
+2. Deploy the latest production-approved branch.
+3. Confirm Supabase Auth redirect/domain settings include the production hostname.
+4. Confirm the `admin-create-user` Edge Function and database migrations are deployed.
+5. Run a post-deploy smoke test covering login, dashboard, core write operations, user administration and printing.
+
+## Security notes
+
+- Authentication is enforced by middleware.
+- Database access relies on Supabase Row Level Security and application role checks.
+- Elevated Supabase service-role access is confined to the server-side Edge Function used for administrator-created accounts. Do not expose the service-role key to the browser.
+- Baseline response security headers are configured in `next.config.js`.
