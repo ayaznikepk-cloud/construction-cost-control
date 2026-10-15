@@ -39,7 +39,7 @@ export default function BoqPrintButton({ targetId = "boq-print-area" }: { target
             td:nth-child(2) { min-width: 260px; white-space: normal; }
             .boq-section-row td { background: #f3f4f6; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
             .boq-description-row td { background: #f8fafc; font-weight: 700; }
-            .boq-locked-label, .boq-actions { display: none !important; }
+            .boq-screen-only, .boq-locked-label, .boq-actions { display: none !important; }
             .print-only-header { display: block !important; margin-bottom: 10px; }
           </style>
         </head>
