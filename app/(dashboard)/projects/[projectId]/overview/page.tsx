@@ -31,10 +31,10 @@ export default async function ProjectOverviewPage({params}:{params:{projectId:st
 
   return <div className="min-w-0">
     <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-      <MetricCard label="Tender Amount" value={project?.approved_dnit_mrs_amount == null ? "—" : Number(project.approved_dnit_mrs_amount)} currency={project?.approved_dnit_mrs_amount != null} />
+      <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Tender Amount</div><div className="mt-1 text-xl font-semibold">{project?.approved_dnit_mrs_amount == null ? "—" : `Rs ${money(project.approved_dnit_mrs_amount)}`}</div></div>
       <div className="rounded-xl border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Bid Percentage</div><div className={`mt-2 text-2xl font-semibold tabular-nums ${project?.bid_percentage == null ? "text-gray-400" : Number(project.bid_percentage) < 0 ? "text-green-700" : Number(project.bid_percentage) > 0 ? "text-orange-700" : "text-gray-900"}`}>{project?.bid_percentage == null ? "—" : `${Number(project.bid_percentage) > 0 ? "+" : ""}${Number(project.bid_percentage).toFixed(2)}%`}</div><div className="mt-1 text-xs text-gray-500">{project?.bid_percentage == null ? "Not recorded" : Number(project.bid_percentage) < 0 ? "Below tender" : Number(project.bid_percentage) > 0 ? "Above tender" : "At par"}</div></div>
       <MetricCard label="Awarded Contract Value" value={Number(project?.original_contract_amount ?? s.contract_value)} />
-      <MetricCard label="Performance Security" value={project?.performance_security == null ? "—" : Number(project.performance_security)} currency={project?.performance_security != null} />
+      <div className="rounded-lg border border-border bg-white p-4"><div className="text-xs font-medium text-gray-500">Performance Security</div><div className="mt-1 text-xl font-semibold">{project?.performance_security == null ? "—" : `Rs ${money(project.performance_security)}`}</div></div>
     </div>
     <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
       <MetricCard label="Contract Value" value={Number(s.contract_value)} />
