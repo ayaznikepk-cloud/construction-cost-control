@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   const supabase = createClient();
   const [{ data: projects, error }, { data: projectContracts }, { data: bills }, { data: securities }] = await Promise.all([
     supabase.from("v_project_financial_summary").select("*"),
-    supabase.from("projects").select("id,bid_percentage,performance_security"),
+    supabase.from("projects").select("id,bid_percentage,earnest_money,performance_security"),
     supabase.from("ra_bills").select("id,status").in("status", ["submitted","under_checking","verified"]),
     supabase.from("securities").select("id,expiry_date,status").eq("status","active").not("expiry_date","is",null),
   ]);
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        <div className="divide-y divide-border md:hidden">{projects?.map((p:any)=><Link key={p.project_id} href={`/projects/${p.project_id}/overview`} className="block p-4"><div className="font-medium">{p.project_name}</div><div className="mt-2 text-xs text-gray-600">Bid: {contractDetails.get(p.project_id)?.bid_percentage == null ? "—" : `${Number(contractDetails.get(p.project_id)!.bid_percentage) > 0 ? "+" : ""}${Number(contractDetails.get(p.project_id)!.bid_percentage).toFixed(2)}%`} · Performance security: {contractDetails.get(p.project_id)?.performance_security == null ? "—" : `Rs ${Number(contractDetails.get(p.project_id)!.performance_security).toLocaleString("en-PK")}`}</div><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><div className="text-gray-500">Executed</div><div className="font-medium">Rs {Number(p.work_executed_value??0).toLocaleString("en-PK")}</div></div><div><div className="text-gray-500">Actual Cost</div><div className="font-medium">Rs {Number(p.actual_cost??0).toLocaleString("en-PK")}</div></div><div><div className="text-gray-500">Received</div><div className="font-medium">Rs {Number(p.amount_received??0).toLocaleString("en-PK")}</div></div><div><div className="text-gray-500">Receivable</div><div className="font-medium">Rs {Number(p.receivable??0).toLocaleString("en-PK")}</div></div></div></Link>)}</div>
+        <div className="divide-y divide-border md:hidden">{projects?.map((p:any)=><Link key={p.project_id} href={`/projects/${p.project_id}/overview`} className="block p-4"><div className="font-medium">{p.project_name}</div><div className="mt-2 text-xs text-gray-600">Bid: {contractDetails.get(p.project_id)?.bid_percentage == null ? "—" : `${Number(contractDetails.get(p.project_id)!.bid_percentage) > 0 ? "+" : ""}${Number(contractDetails.get(p.project_id)!.bid_percentage).toFixed(2)}%`} · Earnest money: {contractDetails.get(p.project_id)?.earnest_money == null ? "—" : `Rs ${Number(contractDetails.get(p.project_id)!.earnest_money).toLocaleString("en-PK")}`} · Performance security: {contractDetails.get(p.project_id)?.performance_security == null ? "—" : `Rs ${Number(contractDetails.get(p.project_id)!.performance_security).toLocaleString("en-PK")}`}</div><div className="mt-3 grid grid-cols-2 gap-3 text-xs"><div><div className="text-gray-500">Executed</div><div className="font-medium">Rs {Number(p.work_executed_value??0).toLocaleString("en-PK")}</div></div><div><div className="text-gray-500">Actual Cost</div><div className="font-medium">Rs {Number(p.actual_cost??0).toLocaleString("en-PK")}</div></div><div><div className="text-gray-500">Received</div><div className="font-medium">Rs {Number(p.amount_received??0).toLocaleString("en-PK")}</div></div><div><div className="text-gray-500">Receivable</div><div className="font-medium">Rs {Number(p.receivable??0).toLocaleString("en-PK")}</div></div></div></Link>)}</div>
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-[720px] w-full text-sm">
             <thead>
@@ -69,6 +69,7 @@ export default async function DashboardPage() {
                 <th className="px-4 py-2 font-medium">Project</th>
                 <th className="px-4 py-2 font-medium">Contract Value</th>
                 <th className="px-4 py-2 font-medium">Bid %</th>
+                <th className="px-4 py-2 font-medium">Earnest Money</th>
                 <th className="px-4 py-2 font-medium">Performance Security</th>
                 <th className="px-4 py-2 font-medium">Executed Value</th>
                 <th className="px-4 py-2 font-medium">Received</th>
@@ -81,6 +82,7 @@ export default async function DashboardPage() {
                   <td className="max-w-[260px] px-4 py-2">{p.project_name}</td>
                   <td className="whitespace-nowrap px-4 py-2">Rs {Number(p.contract_value).toLocaleString("en-PK")}</td>
                   <td className="whitespace-nowrap px-4 py-2">{contractDetails.get(p.project_id)?.bid_percentage == null ? "—" : `${Number(contractDetails.get(p.project_id)!.bid_percentage) > 0 ? "+" : ""}${Number(contractDetails.get(p.project_id)!.bid_percentage).toFixed(2)}%`}</td>
+                  <td className="whitespace-nowrap px-4 py-2">{contractDetails.get(p.project_id)?.earnest_money == null ? "—" : `Rs ${Number(contractDetails.get(p.project_id)!.earnest_money).toLocaleString("en-PK")}`}</td>
                   <td className="whitespace-nowrap px-4 py-2">{contractDetails.get(p.project_id)?.performance_security == null ? "—" : `Rs ${Number(contractDetails.get(p.project_id)!.performance_security).toLocaleString("en-PK")}`}</td>
                   <td className="whitespace-nowrap px-4 py-2">Rs {Number(p.work_executed_value).toLocaleString("en-PK")}</td>
                   <td className="whitespace-nowrap px-4 py-2">Rs {Number(p.amount_received).toLocaleString("en-PK")}</td>
