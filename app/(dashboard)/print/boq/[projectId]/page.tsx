@@ -45,6 +45,9 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       if (offset === 99000) errorMessage = "Too many extra items to print.";
     }
   }
+  const { data: executionRows, error: executionError } = await supabase.from("v_boq_cost_summary").select("boq_item_id,executed_quantity").eq("project_id",params.projectId);
+  if (executionError) errorMessage = errorMessage || executionError.message;
+  const executedByItem = new Map((executionRows ?? []).map(row => [row.boq_item_id, Number(row.executed_quantity ?? 0)]));
   const approvedByItem = new Map<string,number>();
   for (const v of variations) approvedByItem.set(v.boq_item_id,(approvedByItem.get(v.boq_item_id) ?? 0)+Number(v.approved_quantity ?? 0));
   const rateBasis = (i:any) => Number(i.rate_basis || 1);
@@ -60,6 +63,7 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
     const unit = Array.isArray(i.units) ? i.units[0]?.code : i.units?.code;
     const heading = !unit;
     const variation = approvedByItem.get(i.id) ?? 0;
+    const executed = executedByItem.get(i.id) ?? 0;
     return <tr key={i.id} className={heading ? "bg-slate-50 font-semibold" : ""}>
       <td>{i.parent_boq_item_id ? "↳ " : ""}{i.boq_number}</td>
       <td className={i.parent_boq_item_id ? "pl-5" : ""}>{i.description}</td>
@@ -71,6 +75,8 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       <td className="text-right">{heading ? (children.has(i.id) ? pkr(children.get(i.id)!) : "—") : pkr(contractAmount(i))}</td>
       <td className="text-right">{heading ? "—" : variation.toLocaleString("en-PK")}</td>
       <td className="text-right">{heading ? "—" : (Number(i.original_quantity)+variation).toLocaleString("en-PK")}</td>
+      <td className="text-right">{heading ? "—" : executed.toLocaleString("en-PK")}</td>
+      <td className="text-right">{heading ? "—" : pkr(executed * Number(i.contract_rate ?? 0) / rateBasis(i))}</td>
     </tr>;
   });
   const sectionGroups = (sections ?? []).map(s=>({section:s,rows:items.filter(i=>i.section_id===s.id)}));
@@ -90,11 +96,11 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       </div>
       <div className="print-table-scroll">
         <table className="print-table w-full text-left text-xs">
-          <thead><tr><th>BOQ #</th><th>Description</th><th className="text-right">Original Qty</th><th>Unit</th><th className="text-right">MRS Rate</th><th className="text-right">Contract Rate</th><th className="text-right">Original MRS Amount</th><th className="text-right">Original Amount</th><th className="text-right">Approved Var.</th><th className="text-right">Revised Qty</th></tr></thead>
+          <thead><tr><th>BOQ #</th><th>Description</th><th className="text-right">Original Qty</th><th>Unit</th><th className="text-right">MRS Rate</th><th className="text-right">Contract Rate</th><th className="text-right">Original MRS Amount</th><th className="text-right">Original Amount</th><th className="text-right">Approved Var.</th><th className="text-right">Revised Qty</th><th className="text-right">Executed Qty</th><th className="text-right">Executed Amount</th></tr></thead>
           <tbody>
-            {sectionGroups.map(({section,rows})=><>{/* Section names separate BOQ groups */}<tr key={section.id} className="bg-gray-100 font-semibold"><td colSpan={10}>{section.name}</td></tr>{renderRows(rows)}</>)}
+            {sectionGroups.map(({section,rows})=><>{/* Section names separate BOQ groups */}<tr key={section.id} className="bg-gray-100 font-semibold"><td colSpan={12}>{section.name}</td></tr>{renderRows(rows)}</>)}
             {renderRows(items.filter(i=>!i.section_id))}
-            {!items.length && <tr><td colSpan={9}>No BOQ items recorded.</td></tr>}
+            {!items.length && <tr><td colSpan={12}>No BOQ items recorded.</td></tr>}
           </tbody>
         </table>
       </div>
