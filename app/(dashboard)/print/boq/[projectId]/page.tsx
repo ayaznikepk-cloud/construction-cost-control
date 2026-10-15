@@ -69,14 +69,14 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       <td className={i.parent_boq_item_id ? "pl-5" : ""}>{i.description}</td>
       <td className="text-right">{heading ? "—" : Number(i.original_quantity).toLocaleString("en-PK")}</td>
       <td>{unit ?? "—"}</td>
-      <td className="text-right">{i.mrs_rate == null ? "—" : Number(i.mrs_rate).toLocaleString("en-PK")}</td>
-      <td className="text-right">{heading ? "—" : Number(i.contract_rate).toLocaleString("en-PK")}</td>
-      <td className="text-right">{heading ? "—" : pkr(mrsAmount(i))}</td>
-      <td className="text-right">{heading ? (children.has(i.id) ? pkr(children.get(i.id)!) : "—") : pkr(contractAmount(i))}</td>
-      <td className="text-right">{heading ? "—" : variation.toLocaleString("en-PK")}</td>
-      <td className="text-right">{heading ? "—" : (Number(i.original_quantity)+variation).toLocaleString("en-PK")}</td>
-      <td className="text-right">{heading ? "—" : executed.toLocaleString("en-PK")}</td>
-      <td className="text-right">{heading ? "—" : pkr(executed * Number(i.contract_rate ?? 0) / rateBasis(i))}</td>
+      <td className="bg-blue-50 text-right">{i.mrs_rate == null ? "—" : Number(i.mrs_rate).toLocaleString("en-PK")}</td>
+      <td className="bg-blue-50 text-right">{heading ? "—" : Number(i.contract_rate).toLocaleString("en-PK")}</td>
+      <td className="bg-emerald-50 text-right">{heading ? "—" : pkr(mrsAmount(i))}</td>
+      <td className="bg-emerald-50 text-right">{heading ? (children.has(i.id) ? pkr(children.get(i.id)!) : "—") : pkr(contractAmount(i))}</td>
+      <td className="bg-amber-50 text-right">{heading ? "—" : variation.toLocaleString("en-PK")}</td>
+      <td className="bg-amber-50 text-right">{heading ? "—" : (Number(i.original_quantity)+variation).toLocaleString("en-PK")}</td>
+      <td className="bg-violet-50 text-right">{heading ? "—" : executed.toLocaleString("en-PK")}</td>
+      <td className="bg-violet-50 text-right">{heading ? "—" : pkr(executed * Number(i.contract_rate ?? 0) / rateBasis(i))}</td>
     </tr>;
   });
   const sectionGroups = (sections ?? []).map(s=>({section:s,rows:items.filter(i=>i.section_id===s.id)}));
@@ -96,7 +96,7 @@ export default async function BoqPrintPage({ params }: { params: { projectId: st
       </div>
       <div className="print-table-scroll">
         <table className="print-table w-full text-left text-xs">
-          <thead><tr><th>BOQ #</th><th>Description</th><th className="text-right">Original Qty</th><th>Unit</th><th className="text-right">MRS Rate</th><th className="text-right">Contract Rate</th><th className="text-right">Original MRS Amount</th><th className="text-right">Original Amount</th><th className="text-right">Approved Var.</th><th className="text-right">Revised Qty</th><th className="text-right">Executed Qty</th><th className="text-right">Executed Amount</th></tr></thead>
+          <thead><tr><th>BOQ #</th><th>Description</th><th className="text-right">Original Qty</th><th>Unit</th><th className="bg-blue-100 text-right">MRS Rate</th><th className="bg-blue-100 text-right">Contract Rate</th><th className="bg-emerald-100 text-right">Original MRS Amount</th><th className="bg-emerald-100 text-right">Original Amount</th><th className="bg-amber-100 text-right">Approved Var.</th><th className="bg-amber-100 text-right">Revised Qty</th><th className="bg-violet-100 text-right">Executed Qty</th><th className="bg-violet-100 text-right">Executed Amount</th></tr></thead>
           <tbody>
             {sectionGroups.map(({section,rows})=><>{/* Section names separate BOQ groups */}<tr key={section.id} className="bg-gray-100 font-semibold"><td colSpan={12}>{section.name}</td></tr>{renderRows(rows)}</>)}
             {renderRows(items.filter(i=>!i.section_id))}
