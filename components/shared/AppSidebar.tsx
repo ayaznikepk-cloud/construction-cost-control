@@ -97,7 +97,7 @@ export default function AppSidebar() {
   }, [open]);
 
   return <>
-    <button type="button" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className={`fixed top-3 z-30 hidden rounded-md border bg-white p-2 text-gray-700 shadow-sm hover:bg-gray-50 lg:block ${collapsed ? "left-3" : "left-[16.5rem]"}`}>
+    <button type="button" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} className={`fixed top-3 z-30 hidden rounded-md border bg-white p-2 text-gray-700 shadow-sm transition-[left] duration-300 hover:bg-gray-50 lg:block ${collapsed ? "left-3" : "left-[13.5rem]"}`}>
       {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
     </button>
     <aside className={`${collapsed ? "lg:w-0" : "lg:w-64"} hidden flex-shrink-0 overflow-hidden bg-navy text-gray-300 transition-[width] duration-300 lg:flex lg:flex-col`}>
