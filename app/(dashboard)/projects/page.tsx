@@ -91,7 +91,7 @@ export default async function ProjectsPage() {
   const supabase = createClient();
   const { data: projects, error } = await supabase
     .from("projects")
-    .select("id, project_code, project_name, department, location, approved_dnit_mrs_amount, bid_percentage, original_contract_amount, performance_security, status")
+    .select("id, project_code, project_name, department, location, approved_dnit_mrs_amount, bid_percentage, original_contract_amount, earnest_money, performance_security, status")
     .order("created_at", { ascending: false });
 
   return (
@@ -112,7 +112,7 @@ export default async function ProjectsPage() {
           <div className="mt-1 text-xs text-gray-500">{projects?.length ?? 0} project{projects?.length === 1 ? "" : "s"}</div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1250px] text-sm">
+          <table className="w-full min-w-[1380px] text-sm">
             <thead className="bg-gray-50">
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-gray-500">
                 <th className="px-5 py-3 font-medium">Project</th>
@@ -121,6 +121,7 @@ export default async function ProjectsPage() {
                 <th className="px-5 py-3 text-right font-medium">Tender Amount</th>
                 <th className="px-5 py-3 text-right font-medium">Bid %</th>
                 <th className="px-5 py-3 text-right font-medium">Award / Agreement</th>
+                <th className="px-5 py-3 text-right font-medium">Earnest Money</th>
                 <th className="px-5 py-3 text-right font-medium">Performance Security</th>
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3"></th>
@@ -140,6 +141,7 @@ export default async function ProjectsPage() {
                   <td className="px-5 py-4 text-right tabular-nums">{p.approved_dnit_mrs_amount == null ? "—" : money(p.approved_dnit_mrs_amount)}</td>
                   <td className={`px-5 py-4 text-right font-semibold tabular-nums ${p.bid_percentage == null ? "text-gray-400" : Number(p.bid_percentage) < 0 ? "text-red-700" : Number(p.bid_percentage) > 0 ? "text-orange-700" : "text-gray-700"}`}>{p.bid_percentage == null ? "—" : `${Number(p.bid_percentage) > 0 ? "+" : ""}${Number(p.bid_percentage).toFixed(2)}%`}</td>
                   <td className="px-5 py-4 text-right font-medium tabular-nums">{money(p.original_contract_amount)}</td>
+                  <td className="px-5 py-4 text-right tabular-nums">{p.earnest_money == null ? "—" : money(p.earnest_money)}</td>
                   <td className="px-5 py-4 text-right tabular-nums">{p.performance_security == null ? "—" : money(p.performance_security)}</td>
                   <td className="px-5 py-4">
                     <span className="inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium capitalize text-green-700">{p.status}</span>
@@ -150,7 +152,7 @@ export default async function ProjectsPage() {
                 </tr>
               ))}
               {!projects?.length && (
-                <tr><td colSpan={9} className="px-5 py-12 text-center text-sm text-gray-500">No projects yet. Add the first project to begin.</td></tr>
+                <tr><td colSpan={10} className="px-5 py-12 text-center text-sm text-gray-500">No projects yet. Add the first project to begin.</td></tr>
               )}
             </tbody>
           </table>
