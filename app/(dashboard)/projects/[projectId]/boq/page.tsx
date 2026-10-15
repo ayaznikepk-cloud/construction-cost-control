@@ -184,7 +184,7 @@ type BoqItem = {
   sort_order: number; is_locked: boolean; unit_id: string | null; units: { code: string } | { code: string }[] | null;
 };
 
-export default async function BoqPage({ params, searchParams }: { params: { projectId: string }; searchParams?: { edit?: string } }) {
+export default async function BoqPage({ params, searchParams }: { params: { projectId: string }; searchParams?: { edit?: string; delete_error?: string; delete_success?: string } }) {
   const supabase = createClient();
   const [
     { data: project }, { data: sections, error: sectionError }, { data: rawItems, error: itemError },
@@ -220,6 +220,8 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
 
   return (
     <div className="space-y-6">
+      {searchParams?.delete_error && <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{searchParams.delete_error === "has_children" ? "This parent BOQ item has sub-items. Delete or move its child items first; no records were deleted." : "This BOQ item is referenced by another record and cannot be deleted safely. No records were deleted."}</div>}
+      {searchParams?.delete_success && <div role="status" className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">BOQ item deleted successfully.</div>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-lg font-semibold text-gray-900">Bill of Quantities</h2><p className="mt-1 text-sm text-gray-500">Original BOQ, approved quantity changes and execution are kept separately.</p></div>
         {!allLocked && items.length > 0 && <form action={lockOriginalBoq}><input type="hidden" name="project_id" value={params.projectId}/><button className="rounded-md border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50">Lock original BOQ</button></form>}
