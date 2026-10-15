@@ -138,7 +138,7 @@ export default async function ProjectsPage() {
                   <td className="px-5 py-4 text-gray-700">{p.department || "—"}</td>
                   <td className="px-5 py-4 text-gray-700">{p.location || "—"}</td>
                   <td className="px-5 py-4 text-right tabular-nums">{p.approved_dnit_mrs_amount == null ? "—" : money(p.approved_dnit_mrs_amount)}</td>
-                  <td className={`px-5 py-4 text-right font-semibold tabular-nums ${p.bid_percentage == null ? "text-gray-400" : Number(p.bid_percentage) < 0 ? "text-green-700" : Number(p.bid_percentage) > 0 ? "text-orange-700" : "text-gray-700"}`}>{p.bid_percentage == null ? "—" : `${Number(p.bid_percentage) > 0 ? "+" : ""}${Number(p.bid_percentage).toFixed(2)}%`}</td>
+                  <td className={`px-5 py-4 text-right font-semibold tabular-nums ${p.bid_percentage == null ? "text-gray-400" : Number(p.bid_percentage) < 0 ? "text-red-700" : Number(p.bid_percentage) > 0 ? "text-orange-700" : "text-gray-700"}`}>{p.bid_percentage == null ? "—" : `${Number(p.bid_percentage) > 0 ? "+" : ""}${Number(p.bid_percentage).toFixed(2)}%`}</td>
                   <td className="px-5 py-4 text-right font-medium tabular-nums">{money(p.original_contract_amount)}</td>
                   <td className="px-5 py-4 text-right tabular-nums">{p.performance_security == null ? "—" : money(p.performance_security)}</td>
                   <td className="px-5 py-4">
