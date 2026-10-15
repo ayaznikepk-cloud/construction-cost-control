@@ -56,7 +56,7 @@ async function addItem(formData: FormData) {
   if (rowType === "measured" && (quantity === null || quantity < 0 || contractRate === null || contractRate < 0 || (mrsRate !== null && mrsRate < 0))) {
     throw new Error("Quantity and rates must be zero or greater.");
   }
-  const { data: unitRow } = await supabase.from("units").select("code").eq("id", unitId ?? "").maybeSingle();
+  const { data: unitRow } = rowType === "measured" ? await supabase.from("units").select("code").eq("id", unitId!).maybeSingle() : { data: null };
   if (rowType === "measured" && !unitRow) throw new Error("Selected unit was not found.");
   const rateBasis = unitRow?.code.startsWith("%") ? 100 : 1;
 
@@ -92,7 +92,7 @@ async function updateItem(formData: FormData) {
   const {data:existing}=await supabase.from("boq_items").select("id,is_locked").eq("id",itemId).eq("project_id",projectId).maybeSingle();
   if(!existing) throw new Error("BOQ item was not found."); if(existing.is_locked) throw new Error("Locked BOQ items cannot be edited.");
   if(parentId===itemId) throw new Error("A BOQ item cannot be its own parent.");
-  const {data:unit}=await supabase.from("units").select("code").eq("id",unitId).maybeSingle(); if(rowType==="measured"&&!unit) throw new Error("Selected unit was not found.");
+  const {data:unit}=rowType==="measured" ? await supabase.from("units").select("code").eq("id",unitId!).maybeSingle() : {data:null}; if(rowType==="measured"&&!unit) throw new Error("Selected unit was not found.");
   if(sectionId){const {data:s}=await supabase.from("boq_sections").select("id").eq("id",sectionId).eq("project_id",projectId).maybeSingle();if(!s)throw new Error("Selected BOQ section does not belong to this project.");}
   if(parentId){const {data:p}=await supabase.from("boq_items").select("id").eq("id",parentId).eq("project_id",projectId).maybeSingle();if(!p)throw new Error("Selected parent item does not belong to this project.");}
   const {error}=await supabase.from("boq_items").update({section_id:sectionId,parent_boq_item_id:parentId,boq_number:boqNumber,description,unit_id:rowType==="description"?null:unitId,original_quantity:rowType==="description"?0:quantity,mrs_rate:rowType==="description"?null:mrsRate,contract_rate:rowType==="description"?0:contractRate,rate_basis:unit?.code.startsWith("%")?100:1,sort_order:sortOrder,updated_by:user.id}).eq("id",itemId).eq("project_id",projectId).eq("is_locked",false);
@@ -238,7 +238,7 @@ export default async function BoqPage({ params, searchParams }: { params: { proj
 
       {!allLocked && <div className="grid gap-4 md:grid-cols-2"><AddSectionForm projectId={params.projectId} action={addSection}/><AddItemForm key={editingItem?.id ?? "new"} projectId={params.projectId} sections={sections ?? []} items={items.filter(i=>i.id!==editingItem?.id).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description}))} units={units ?? []} action={editingItem?updateItem:addItem} editingItem={editingItem}/></div>}
       {allLocked && <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">The original BOQ is locked. Quantity changes are recorded as variations, and non-BOQ work as extra items.</div>}
-      {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
+      {allLocked && <div className="grid gap-4 xl:grid-cols-2"><VariationForm projectId={params.projectId} items={items.filter(i=>i.unit_id!==null).map(i=>({id:i.id,boq_number:i.boq_number,description:i.description,original_quantity:i.original_quantity}))} action={addVariation}/><ExtraItemForm projectId={params.projectId} units={units ?? []} action={addExtraItem}/></div>}
       {allLocked && <div className="grid gap-4 xl:grid-cols-2">
         <ChangeRegister title="Variation register" empty="No variations recorded." projectId={params.projectId} action={decideChange} rows={(variations??[]).map((v:any)=>({id:v.id,kind:"variation" as const,name:`${v.boq_items?.boq_number ?? "BOQ"} — ${v.boq_items?.description ?? ""}`,detail:`Proposed Δ ${Number(v.proposed_quantity).toLocaleString()} · Approved Δ ${v.approved_quantity==null?"—":Number(v.approved_quantity).toLocaleString()}`,status:v.status,reference:v.approval_reference,date:v.approval_date,proposedQuantity:Number(v.proposed_quantity)}))}/>
         <ChangeRegister title="Extra item register" empty="No extra items recorded." projectId={params.projectId} action={decideChange} rows={(extraItems??[]).map((e:any)=>({id:e.id,kind:"extra" as const,name:e.description,detail:`${Number(e.quantity).toLocaleString()} ${Array.isArray(e.units)?e.units[0]?.code:e.units?.code ?? ""} · Proposed ${e.proposed_rate==null?"—":pkr(Number(e.proposed_rate))} · Approved ${e.approved_rate==null?"—":pkr(Number(e.approved_rate))}`,status:e.status,reference:e.approval_reference,date:e.approval_date,proposedRate:e.proposed_rate==null?null:Number(e.proposed_rate)}))}/>
