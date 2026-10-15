@@ -6,7 +6,9 @@ import FormStatusMessage from "@/components/shared/FormStatusMessage";
 type Action = (fd: FormData) => Promise<void>;
 const cls = "min-w-0 w-full rounded-md border border-border px-3 py-2 text-sm";
 
-export function CreateBillForm({ projectId, action }: { projectId: string; action: Action }) {
+export function CreateBillForm({ projectId, items, action }: { projectId: string; items: { id: string; label: string; available: number; unit: string }[]; action: Action }) {
+  const [itemId, setItemId] = useState("");
+  const selected = items.find((item) => item.id === itemId);
   const ref = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -25,9 +27,17 @@ export function CreateBillForm({ projectId, action }: { projectId: string; actio
       return;
     }
 
+    const qty = Number(fd.get("claimed_quantity") ?? 0);
+    if (!selected || !Number.isFinite(qty) || qty <= 0 || qty > selected.available + 0.000001) {
+      setError("Select a measured BOQ item and enter a positive quantity within the available balance.");
+      setPending(false);
+      return;
+    }
+
     try {
       await action(fd);
       ref.current?.reset();
+      setItemId("");
       setSuccess("Draft RA bill created successfully.");
     } catch (e: any) {
       setError(e?.message ?? "Could not create the RA bill. Your entries have been kept.");
@@ -39,7 +49,7 @@ export function CreateBillForm({ projectId, action }: { projectId: string; actio
   return (
     <form ref={ref} action={submit} className="rounded-xl border border-border bg-white p-4">
       <div className="mb-1 font-medium">Create RA bill</div>
-      <p className="mb-3 text-xs text-gray-500">Create a draft first. You can add claim items before submitting it for checking.</p>
+      <p className="mb-3 text-xs text-gray-500">Select the first measured BOQ claim item to save a draft. Additional items can be added while it remains a draft.</p>
       {error && <div className="mb-3"><FormStatusMessage kind="error">{error}</FormStatusMessage></div>}
       {success && <div className="mb-3"><FormStatusMessage kind="success">{success}</FormStatusMessage></div>}
       <input type="hidden" name="project_id" value={projectId} />
@@ -54,8 +64,17 @@ export function CreateBillForm({ projectId, action }: { projectId: string; actio
           <input name="period_to" type="date" required className={"mt-1 " + cls} />
         </label>
       </div>
-      <button disabled={pending} className="mt-3 w-full rounded-md bg-active px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
-        {pending ? "Creating draft..." : "Create draft RA bill"}
+      {items.length === 0 ? <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">No measured BOQ quantity is available. Record measurements before creating an RA bill.</p> : (
+        <div className="mt-3 grid min-w-0 gap-2 md:grid-cols-2">
+          <select name="boq_item_id" required value={itemId} onChange={(e) => setItemId(e.target.value)} className={cls}>
+            <option value="">Select first measured BOQ item</option>
+            {items.map((item) => <option key={item.id} value={item.id}>{item.label} — available {item.available.toLocaleString()} {item.unit}</option>)}
+          </select>
+          <input name="claimed_quantity" type="number" min="0.001" step="0.001" max={selected?.available} required placeholder="First claimed quantity" className={cls} />
+        </div>
+      )}
+      <button disabled={pending || items.length === 0} className="mt-3 w-full rounded-md bg-active px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
+        {pending ? "Saving draft..." : "Save RA bill draft with claim"}
       </button>
     </form>
   );
